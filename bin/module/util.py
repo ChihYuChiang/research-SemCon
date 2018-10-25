@@ -1,21 +1,37 @@
-#--Universal container
 class UniversalContainer():
+    """
+    Usage
+    - Print object to see all key and data (recursive).
+    - listKey() shows all attribute keys of this object (current level).
+    - listMethod() shows all methods of this object.
+    """
 
-    def listData(self):
-        data = [(item, getattr(self, item)) for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
-        for item in data:
-            try:
-                item[1].listData()
-                print(item)
-            except AttributeError:
-                print(item)
+    def __repr__(self, level=0):
+        keys = [item for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
+        rep = []
+
+        for key in keys:
+            attr = getattr(self, key)
+            if isinstance(attr, UniversalContainer):
+                rep.append('-' * 3 * level + '.' + key)
+                rep.append(attr.__repr__(level + 1))
+            else:
+                rep.append('-' * 3 * level + '.' + key)
+                rep.append('-' * 3 * level + ' ' + str(attr))
+
+        return '\n'.join(rep)
+
+    def listKey(self):
+        return [item for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
 
     def listMethod(self):
-        print([item for item in dir(self) if callable(getattr(self, item)) and not item.startswith("__")])
+        return [item for item in dir(self) if callable(getattr(self, item)) and not item.startswith("__")]
 
 
-#--Convert data to object form (recursive)
 class ConvertedContainer(UniversalContainer):
+    """
+    Convert data to object form (recursive).
+    """
     
     def __new__(cls, data):
         from collections import Iterable
@@ -32,20 +48,29 @@ class ConvertedContainer(UniversalContainer):
             setattr(self, list(data.keys())[i], ConvertedContainer(list(data.values())[i]))
 
 
-#--Setting container for convenient keyword=parameter setting
 class SettingContainer(UniversalContainer):
+    """
+    Usage
+    - Convenient keyword = parameter setting.
+    - Protected attribute setter. Use `update(key=value)` to modify content.
+    """
+
+    def __setattr__(self, key, value):
+        class ProhibittedOperation(Exception): pass
+        raise self.ProhibittedOperation('Use SettingContainer.update to modify attributes.')
 
     def update(self, **kwarg):
         for key, value in kwarg.items():
-            setattr(self, key, value)
+            self.__dict__[key] = value
+            # setattr(self, key, value)
 
     __init__ = update
 
 
-#--Read config files into obj container
 def getConfigObj(path):
     """
-    Support file type: .json, .yml
+    Read config files into an obj container.
+    - Support file type: .json, .yml.
     """
     import yaml
     import re
