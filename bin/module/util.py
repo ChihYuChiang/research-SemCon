@@ -24,33 +24,25 @@ class ClsDecorator():
         cls.__init__ = update        
         return cls
 
-    #Isn't in use. However, a good sample of decorator with arg input
-    def grantSessionStorage(path):
-        """
-        Grant methods dealing with offline session info storage
-        - Use store `session` attribute.
-        """
-        def wrapper(cls):
-            def initSession(path=path):
-                try:
-                    with open(path, 'rb') as f: return pickle.load(f, encoding='utf-8')
-                except:
-                    return util.UniversalContainer()
 
-            @classmethod
-            def dumpSession(cls, path=path):
-                with open(path, 'wb') as f: pickle.dump(cls.session, f)
-            
-            @classmethod
-            def loadSession(cls, path=path):
-                with open(path, 'rb') as f: cls.session = pickle.load(f, encoding='utf-8')
-            
-            cls.session = initSession()
-            cls.initSession = initSession
-            cls.dumpSession = dumpSession      
-            cls.loadSession = loadSession
-            
-            return cls
+#--Decorators for functions
+class FuncDecorator():
+    
+    def delayOperation(time):
+        """
+        Delay operation by `time` secs
+        - 0.7*time + 0.6*random()*time
+        - When time=10, it's 7-13 secs
+        """
+        from time import sleep
+        from random import random
+        def wrapper(original_function):
+            def new_function(*args,**kwargs):
+                sleep(0.7 * time + 0.6 * random() * time)
+
+                original_output = original_function(*args,**kwargs)   
+                return original_output
+            return new_function
         return wrapper
 
 
@@ -136,6 +128,9 @@ def getConfigObj(path):
 
 
 def writeJsls(obj, path):
+    """
+    Write all objs of a iterable into a jsl file
+    """
     import json
     import numpy
 
@@ -159,6 +154,11 @@ def writeJsls(obj, path):
 
 
 def readJsls(path):
+    """
+    Read all objs in one jsl file
+    """
+    import json
+
     output = []
     with open(path, mode='r') as f:
         for line in f:

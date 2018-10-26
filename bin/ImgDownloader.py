@@ -17,7 +17,8 @@ class Store():
             with open(path, 'rb') as f: return pickle.load(f, encoding='utf-8')
         except:
             session = util.UniversalContainer()
-            session.currentId = 0
+            session.currentSearchId = 0
+            session.currentDownloadId = 0
             return session
 
     config = util.SettingContainer(
@@ -86,18 +87,27 @@ class ImgSearch():
     )
 
     @classmethod
+    @util.FuncDecorator.delayOperation(1)
     def search(cls, targetTerm):
         cls.setting.params['q'] = targetTerm
         response = requests.get(cls.setting.url, headers=cls.setting.headers, params=cls.setting.params)
+
         response.raise_for_status()
+        print('Searched \"{}\".'.format(targetTerm))
         return response.json()
     
     @classmethod
-    def searchMappingBatch(cls, mapping, startId, currentResponses=[]):
-        ids = list(mapping)[startId:5]
+    def test_search(cls):
+        #Check Append Results for Jupyter to render
+        response = cls.search('puppies')
+        pprint(response)
+
+    @classmethod
+    def searchMappingBatch(cls, mapping, startId, batchSize=5, currentResponses=[]):
+        ids = list(mapping)[startId : max([startId + batchSize, len(mapping)])]
         idIter = iter(ids)
         responses = currentResponses
-
+    
         while True:
             try:
                 targetId = next(idIter)
@@ -110,41 +120,45 @@ class ImgSearch():
                 print("Unexpected error:", sys.exc_info()[0])
                 return responses, targetId
     
-    @classmethod
-    def test(cls):
-        #Check Append Results for Jupyter to render
-        response = cls.search('puppies')
-        pprint(response)
-    
-    def parseResponse(response):
-        urls = 1
+    def parseResponse_1(response):
+        urls = []
+        for i in range(len(response['value'])):
+            urls.append((i, response['value'][i]['contentUrl']))
         return response['targetId'], urls
     
     @classmethod
-    def parseResponses(cls, responses):
+    def parseResponse_n(cls, responses):
         urlInfo = []
         for response in responses:
-            urlInfo.append(cls.parseResponse(response))
+            urlInfo.append(cls.parseResponse_1(response))
         return urlInfo
 
-Store.data.responses, Store.session.currentId = ImgSearch.searchMappingBatch(Store.data.mapping, Store.session.currentId)
-utils.writeJsls(Store.data.responses, 'data/image-response.jsl')
+# Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, Store.session.currentSearchId)
+# util.writeJsls(Store.data.responses, 'data/image-response.jsl')
 
-Store.data.responses = utils.readJsls('data/image-response.jsl')
-len(Store.data.responses)
-test[4]
+Store.data.responses = util.readJsls('data/image-response.jsl')
+Store.data.urlInfo = ImgSearch.parseResponse_n(Store.data.responses)
 
-Store.data.urlInfo = ImgSearch.parseResponses(Store.data.responses)
-
-
-#--Download img
-class ImgDownload():
-
-    img_url = 'http://images.fineartamerica.com/images-medium-large-5/abstract-art-original-painting-winter-cold-by-madart-megan-duncanson.jpg'
-    path = 'data/img/img_url1.jpeg'
-
-    r = requests.get(img_url, stream=True)
+@util.FuncDecorator.delayOperation(3)
+def get8Save_1(targetId, imgId, url):
+    r = requests.get(url, stream=True)
     if r.status_code == 200:
+        fileName = '{}-{}.jpg'.format(targetId, imgId)
+        path = 'data/img/{}'.format(fileName)
         with open(path, 'wb') as f:
             for chunk in r.iter_content(1024): #'1024 = chunk size
                 f.write(chunk)
+        print('Downloaded {}'.format(fileName))
+        return 
+    else: pass
+        #Save failed ids and urls in session
+
+def get8Save_n(urlInfo):
+    for item in urlInfo:
+        targetId = item[0]
+        for url8Id in item[1][:5]: get8Save_1(targetId, *url8Id)
+
+Store.session.currentSearchId = get8Save_n(Store.data.urlInfo)
+
+#--Download img
+class ImgDownload():
