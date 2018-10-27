@@ -110,7 +110,7 @@ class ConvertedContainer(SettingContainer):
 
 def getConfigObj(path):
     """
-    Read config files into an obj container.
+    Read config files into an obj container
     - Support file type: .json, .yml.
     """
     import yaml
@@ -164,3 +164,36 @@ def readJsls(path):
         for line in f:
             output.append(json.loads(line))
     return output
+
+
+def initLogger(loggerName, console=True, consoleLevel='DEBUG', fileLevel='INFO'):
+    """
+    Initialize a logger using logging module
+    - INFO or up will be saved in file.
+    - DEBUG or up will be printed in console.
+    - https://docs.python.org/3/library/logging.html#logging-levels.
+    - More information is logged in log file than in console. 
+    """
+    import logging
+
+    #Create new logger
+    logger = logging.getLogger(loggerName)
+    logger.setLevel(logging.DEBUG)
+
+    #Formatter reference
+    #'%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
+    #Create file handler and add to logger
+    fh = logging.FileHandler('log/{}.log'.format(loggerName), mode='w+')
+    fh.setLevel(fileLevel)
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    logger.addHandler(fh)
+    
+    #Create console handler and add to logger
+    if console:
+        ch = logging.StreamHandler()
+        ch.setLevel(consoleLevel)
+        ch.setFormatter(logging.Formatter('%(message)s'))
+        logger.addHandler(ch)
+
+    return logger
