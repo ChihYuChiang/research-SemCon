@@ -22,11 +22,16 @@ class Store():
             return session
 
     config = util.SettingContainer(
-        cred=util.getConfigObj('ref/credential.yml'),
-        sessionPath='data/session.pkl'
+        cred=util.getConfigObj('ref/credential.yml').BingImageSearch,
+        path=util.SettingContainer()
+    )
+    config.path.update(
+        session='data/session.pkl',
+        imageResponse='data/image-response.jsl',
+        imageUrl='data/image-url.jsl'
     )
     data = util.UniversalContainer()
-    session = initSession(config.sessionPath)
+    session = initSession(config.path.session)
 
     @classmethod
     def dumpSession(cls, path):
@@ -41,9 +46,6 @@ class Store():
     def reveal(cls):
         exp = '<session>\n{}\n\n<config>\n{}\n\n<data>\n{}'.format(cls.session, cls.config, cls.data)
         print(exp)
-
-#Store session info offline
-Store.dumpSession(Store.config.sessionPath)
 
 
 #--Prepare name-id 2-way mapping
@@ -65,15 +67,13 @@ class Mapping():
         print(mapping.inv['Expeditions: Viking'])
         print(len(mapping))
 
-#Mapping data
-Store.data.mapping = Mapping.generate()
-
 
 #--Acquire img urls (Bing)
 class ImgSearch():
 
-    #Bing setup
+    #Bing setup and init logger
     #https://docs.microsoft.com/en-us/rest/api/cognitiveservices/bing-images-api-v7-reference
+    logger = util.initLogger(name='ImgSearch')
     setting = util.SettingContainer(
         url=Store.config.cred.BingImageSearch.url,
         headers={
@@ -93,7 +93,7 @@ class ImgSearch():
         response = requests.get(cls.setting.url, headers=cls.setting.headers, params=cls.setting.params)
 
         response.raise_for_status()
-        print('Searched \"{}\".'.format(targetTerm))
+        cls.logger.debug('Searched \"{}\".'.format(targetTerm))
         return response.json()
     
     @classmethod
@@ -111,13 +111,13 @@ class ImgSearch():
         while True:
             try:
                 targetId = next(idIter)
-                targetTerm = '{} game'.format(Store.data.mapping[targetId]) 
+                targetTerm = '{} game'.format(Store.data.mapping[targetId]) #'Add 'game' at the end of each title 
                 response = cls.search(targetTerm)
                 response['targetId'] = targetId
                 responses.append(response)
             except StopIteration: return responses, targetId + 1
             except:
-                print("Unexpected error:", sys.exc_info()[0])
+                cls.logger.error("Unexpected error - {}: ".format(targetTerm), sys.exc_info()[0])
                 return responses, targetId
     
     def parseResponse_1(response):
@@ -133,32 +133,78 @@ class ImgSearch():
             urlInfo.append(cls.parseResponse_1(response))
         return urlInfo
 
-# Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, Store.session.currentSearchId)
-# util.writeJsls(Store.data.responses, 'data/image-response.jsl')
-
-Store.data.responses = util.readJsls('data/image-response.jsl')
-Store.data.urlInfo = ImgSearch.parseResponse_n(Store.data.responses)
-
-@util.FuncDecorator.delayOperation(3)
-def get8Save_1(targetId, imgId, url):
-    r = requests.get(url, stream=True)
-    if r.status_code == 200:
-        fileName = '{}-{}.jpg'.format(targetId, imgId)
-        path = 'data/img/{}'.format(fileName)
-        with open(path, 'wb') as f:
-            for chunk in r.iter_content(1024): #'1024 = chunk size
-                f.write(chunk)
-        print('Downloaded {}'.format(fileName))
-        return 
-    else: pass
-        #Save failed ids and urls in session
-
-def get8Save_n(urlInfo):
-    for item in urlInfo:
-        targetId = item[0]
-        for url8Id in item[1][:5]: get8Save_1(targetId, *url8Id)
-
-Store.session.currentSearchId = get8Save_n(Store.data.urlInfo)
 
 #--Download img
 class ImgDownload():
+
+    #Init logger
+    logger = util.initLogger(name='ImgDownload')
+
+    @classmethod
+    @util.FuncDecorator.delayOperation(1)
+    def get8Save_1(cls, targetId, urlId, url):
+        r = requests.get(url, stream=True)
+
+        if r.status_code == 200:
+            fileName = '{}-{}.jpg'.format(targetId, urlId)
+            path = 'data/img/{}'.format(fileName)
+            with open(path, 'wb') as f:
+                for chunk in r.iter_content(1024): #'1024 = chunk size
+                    f.write(chunk)
+            cls.logger.debug('Downloaded {}.'.format(fileName))
+
+        return r.status_code
+
+    @classmethod
+    def get8Save_n(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
+        failedItems = []
+
+        #Download certain range of urlId of a target
+        for item in urlInfo[startId : max([startId + batchSize, len(urlInfo)])]:
+            targetId = item[0]
+            for url8Id in item[1][urlIdRange[0]:urlIdRange[1]]:
+                statusCode = cls.get8Save_1(targetId, *url8Id)
+                if statusCode != 200: failedItems.append((targetId, url8Id[0], statusCode))
+
+        return targetId + 1, failedItems
+
+
+#--Implementation
+def main():
+
+    #Create id and game title mapping
+    Store.data.mapping = Mapping.generate()    
+
+
+    #--Search image
+    if False:
+        #Perform search
+        Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, startId=Store.session.currentSearchId, batchSize=5)
+
+        #Save search responses to file
+        util.writeJsls(Store.data.responses, Store.config.path.imageResponse)
+
+
+    #--Parse response
+    if False:
+        #Load search responses from file
+        Store.data.responses = util.readJsls(Store.config.path.imageResponse)
+
+        #Parse responses for url info
+        Store.data.urlInfo = ImgSearch.parseResponse_n(Store.data.responses)
+
+        #Save url info to file
+        util.writeJsls(Store.data.urlInfo, Store.config.path.imageUrl)
+
+
+    #--Download image
+    #Load url info from file
+    Store.data.urlInfo = util.readJsls(Store.config.path.imageUrl)
+
+    #Perform download
+    Store.session.currentDownloadId, Store.session.failedUrl = get8Save_n(Store.data.urlInfo, startId=Store.session.currentSearchId, batchSize=5, urlIdRange=[0, 100])
+
+
+    #--End session
+    #Store session info offline
+    Store.dumpSession(Store.config.sessionPath)
