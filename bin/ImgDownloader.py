@@ -22,13 +22,13 @@ class Store():
             return session
 
     config = util.SettingContainer(
-        cred=util.getConfigObj('ref/credential.yml').BingImageSearch,
+        cred=util.getConfigObj('ref/credential.yml'),
         path=util.SettingContainer()
     )
     config.path.update(
         session='data/session.pkl',
         imageResponse='data/image-response.jsl',
-        imageUrl='data/image-url.jsl'
+        imageUrl='data/image-url.pkl'
     )
     data = util.UniversalContainer()
     session = initSession(config.path.session)
@@ -73,7 +73,7 @@ class ImgSearch():
 
     #Bing setup and init logger
     #https://docs.microsoft.com/en-us/rest/api/cognitiveservices/bing-images-api-v7-reference
-    logger = util.initLogger(name='ImgSearch')
+    logger = util.initLogger(loggerName='ImgSearch')
     setting = util.SettingContainer(
         url=Store.config.cred.BingImageSearch.url,
         headers={
@@ -104,7 +104,7 @@ class ImgSearch():
 
     @classmethod
     def searchMappingBatch(cls, mapping, startId, batchSize=5, currentResponses=[]):
-        ids = list(mapping)[startId : max([startId + batchSize, len(mapping)])]
+        ids = list(mapping)[startId : startId + batchSize] #Python tolerates slicing index go over len
         idIter = iter(ids)
         responses = currentResponses
     
@@ -117,7 +117,7 @@ class ImgSearch():
                 responses.append(response)
             except StopIteration: return responses, targetId + 1
             except:
-                cls.logger.error("Unexpected error - {}: ".format(targetTerm), sys.exc_info()[0])
+                cls.logger.error("Unexpected error - {}:\n{}".format(targetTerm, sys.exc_info()[0]))
                 return responses, targetId
     
     def parseResponse_1(response):
@@ -137,34 +137,38 @@ class ImgSearch():
 #--Download img
 class ImgDownload():
 
-    #Init logger
-    logger = util.initLogger(name='ImgDownload')
+    #Init logger and http request header
+    logger = util.initLogger(loggerName='ImgDownload')
+    headers = {'user-agent': 'my-app/0.0.1'}
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)
     def get8Save_1(cls, targetId, urlId, url):
-        r = requests.get(url, stream=True)
-
-        if r.status_code == 200:
-            fileName = '{}-{}.jpg'.format(targetId, urlId)
-            path = 'data/img/{}'.format(fileName)
-            with open(path, 'wb') as f:
-                for chunk in r.iter_content(1024): #'1024 = chunk size
-                    f.write(chunk)
-            cls.logger.debug('Downloaded {}.'.format(fileName))
-
-        return r.status_code
+        try:
+            r = requests.get(url, stream=True, timeout=5) #Time out to stop waiting for a response
+            r.raise_for_status()
+        except:
+            cls.logger.error("Unexpected error - {} at {}:\n{}".format(targetId, url, sys.exc_info()[0]))
+            return False
+            
+        fileName = '{}-{}.jpg'.format(targetId, urlId)
+        path = 'data/img/{}'.format(fileName)
+        with open(path, 'wb') as f:
+            for chunk in r.iter_content(1024): #'1024 = chunk size
+                f.write(chunk)
+        cls.logger.debug('Downloaded {}.'.format(fileName))
+        return True
 
     @classmethod
     def get8Save_n(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
         failedItems = []
 
         #Download certain range of urlId of a target
-        for item in urlInfo[startId : max([startId + batchSize, len(urlInfo)])]:
+        for item in urlInfo[startId : startId + batchSize]:
             targetId = item[0]
             for url8Id in item[1][urlIdRange[0]:urlIdRange[1]]:
-                statusCode = cls.get8Save_1(targetId, *url8Id)
-                if statusCode != 200: failedItems.append((targetId, url8Id[0], statusCode))
+                success = cls.get8Save_1(targetId, *url8Id)
+                if not success: failedItems.append((targetId, url8Id[0]))
 
         return targetId + 1, failedItems
 
@@ -173,13 +177,13 @@ class ImgDownload():
 def main():
 
     #Create id and game title mapping
-    Store.data.mapping = Mapping.generate()    
+    Store.data.mapping = Mapping.generate()
 
 
     #--Search image
     if False:
         #Perform search
-        Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, startId=Store.session.currentSearchId, batchSize=5)
+        Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, startId=Store.session.currentSearchId, batchSize=1000)
 
         #Save search responses to file
         util.writeJsls(Store.data.responses, Store.config.path.imageResponse)
@@ -194,15 +198,15 @@ def main():
         Store.data.urlInfo = ImgSearch.parseResponse_n(Store.data.responses)
 
         #Save url info to file
-        util.writeJsls(Store.data.urlInfo, Store.config.path.imageUrl)
+        with open(Store.config.path.imageUrl, 'wb') as f: pickle.dump(Store.data.urlInfo, f)
 
 
     #--Download image
     #Load url info from file
-    Store.data.urlInfo = util.readJsls(Store.config.path.imageUrl)
+    with open(Store.config.path.imageUrl, 'rb') as f: Store.data.urlInfo = pickle.load(f)
 
     #Perform download
-    Store.session.currentDownloadId, Store.session.failedUrl = get8Save_n(Store.data.urlInfo, startId=Store.session.currentSearchId, batchSize=5, urlIdRange=[0, 100])
+    Store.session.currentDownloadId, Store.session.failedUrl = ImgDownload.get8Save_n(Store.data.urlInfo, startId=Store.session.currentDownloadId, batchSize=3, urlIdRange=[95, 100])
 
 
     #--End session
