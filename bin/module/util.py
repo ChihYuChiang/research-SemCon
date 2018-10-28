@@ -152,7 +152,7 @@ def writeJsls(obj, path):
             json.dump(item, f, cls=NumpyEncoder)
             f.write('\n')
     
-    print('Completed writing {}, appended obj len {}.'.format(path, len(obj)))
+    print('Completed writing \'{}\', appended obj len {}.'.format(path, len(obj)))
 
 
 def readJsls(path):
@@ -166,7 +166,7 @@ def readJsls(path):
         for line in f:
             output.append(json.loads(line))
     
-    print('Completed reading {}, loaded obj len {}.'.format(path, len(output)))
+    print('Completed reading \'{}\', loaded obj len {}.'.format(path, len(output)))
     return output
 
 
@@ -201,3 +201,33 @@ def initLogger(loggerName, console=True, consoleLevel='DEBUG', fileLevel='INFO')
         logger.addHandler(ch)
 
     return logger
+
+
+def createCustomHeader():
+    """
+    Create customized HTTP header with random user agent
+    - The `agent` candidates have to be updated manually by the information provided in the link.
+    - https://techblog.willshouse.com/2012/01/03/most-common-user-agents/.
+    - Default `accept` types for each browser can be found in the link.
+    - https://developer.mozilla.org/en-US/docs/Web/HTTP/Content_negotiation/List_of_default_Accept_values
+    """
+
+    USERAGENT_CANDIDATES = [#Acquire updated user agents from: 
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0',
+        'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/68.0.3440.106 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/11.1.2 Safari/605.1.15'
+    ]
+    
+    #
+    DEFAULT_REQUEST_HEADERS = {
+        'Accept': 'application/xml,application/xhtml+xml,text/html;q=0.9, text/plain;q=0.8,image/png,*/*;q=0.5',
+    }
+    
+    #Randomly select one from the candidates and update request header
+    def process_request(self, request, spider):
+        ua = random.choice(self.candidates)
+        request.headers['User-Agent'] = ua
+    
+    headers = {'User-Agent': 'my-app/0.0.1'}

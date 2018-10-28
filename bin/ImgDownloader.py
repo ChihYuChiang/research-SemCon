@@ -150,9 +150,10 @@ class ImgDownload():
             r = requests.get(url, stream=True, timeout=5) #Time out to stop waiting for a response
             r.raise_for_status()
         except:
-            cls.logger.error("Unexpected error - {} at {}:\n{}".format(targetId, url, sys.exc_info()[0]))
+            cls.logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, sys.exc_info()[0]))
             return False
-            
+        
+        #TODO: Make separate folders
         fileName = '{}-{}.jpg'.format(targetId, urlId)
         path = 'data/img/{}'.format(fileName)
         with open(path, 'wb') as f:
@@ -186,7 +187,7 @@ def main():
     #--Search image
     if False:
         #Perform search
-        Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, startId=Store.session.currentSearchId, batchSize=1000)
+        Store.data.responses, Store.session.currentSearchId = ImgSearch.searchMappingBatch(Store.data.mapping, startId=Store.session.currentSearchId, batchSize=400)
 
         #Save search responses to file
         util.writeJsls(Store.data.responses, Store.config.path.imageResponse)
