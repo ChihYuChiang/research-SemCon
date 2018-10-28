@@ -151,6 +151,8 @@ def writeJsls(obj, path):
         for item in obj:
             json.dump(item, f, cls=NumpyEncoder)
             f.write('\n')
+    
+    print('Completed writing {}, appended obj len {}.'.format(path, len(obj)))
 
 
 def readJsls(path):
@@ -163,6 +165,8 @@ def readJsls(path):
     with open(path, mode='r') as f:
         for line in f:
             output.append(json.loads(line))
+    
+    print('Completed reading {}, loaded obj len {}.'.format(path, len(output)))
     return output
 
 

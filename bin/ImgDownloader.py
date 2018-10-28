@@ -14,12 +14,15 @@ class Store():
     #Initialize store content
     def initSession(path):
         try:
-            with open(path, 'rb') as f: return pickle.load(f, encoding='utf-8')
+            with open(path, 'rb') as f:
+                session = pickle.load(f, encoding='utf-8')
+                print('Loaded session at \'{}\'.\n{}'.format(path, session))
         except:
             session = util.UniversalContainer()
             session.currentSearchId = 0
             session.currentDownloadId = 0
-            return session
+            print('Did not find session at \'{}\'. Initiated a new session.\n{}'.format(path, session))
+        return session
 
     config = util.SettingContainer(
         cred=util.getConfigObj('ref/credential.yml'),
@@ -36,10 +39,7 @@ class Store():
     @classmethod
     def dumpSession(cls, path):
         with open(path, 'wb') as f: pickle.dump(cls.session, f)
-    
-    @classmethod
-    def loadSession(cls, path):
-        with open(path, 'rb') as f: cls.session = pickle.load(f, encoding='utf-8')    
+        print('Dumped session at \'{}\'.\n{}'.format(path, cls.session))
 
     #Show all store content
     @classmethod
@@ -115,9 +115,11 @@ class ImgSearch():
                 response = cls.search(targetTerm)
                 response['targetId'] = targetId
                 responses.append(response)
-            except StopIteration: return responses, targetId + 1
+            except StopIteration:
+                cls.logger.info('Finished searches at {} (included).'.format(targetId))
+                return responses, targetId + 1
             except:
-                cls.logger.error("Unexpected error - {}:\n{}".format(targetTerm, sys.exc_info()[0]))
+                cls.logger.error('Unexpected error - {}:\n{}'.format(targetTerm, sys.exc_info()[0]))
                 return responses, targetId
     
     def parseResponse_1(response):
@@ -169,7 +171,8 @@ class ImgDownload():
             for url8Id in item[1][urlIdRange[0]:urlIdRange[1]]:
                 success = cls.get8Save_1(targetId, *url8Id)
                 if not success: failedItems.append((targetId, url8Id[0]))
-
+        
+        cls.logger.info('Finished downloads at {} (included).\nAccumulated {} failed items.'.format(targetId, len(failedItems)))
         return targetId + 1, failedItems
 
 
@@ -211,4 +214,4 @@ def main():
 
     #--End session
     #Store session info offline
-    Store.dumpSession(Store.config.sessionPath)
+    Store.dumpSession(Store.config.path.session)
