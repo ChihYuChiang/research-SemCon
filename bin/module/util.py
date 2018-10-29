@@ -44,14 +44,14 @@ class FuncDecorator():
                 return original_output
             return new_function
         return wrapper
-
+    
 
 class UniversalContainer():
     """
     Usage
     - Print object to see all key and data (recursive).
-    - listKey() shows all attribute keys of this object (current level).
-    - listMethod() shows all methods of this object.
+    - getKeys() shows all attribute keys of this object (current level).
+    - getMethods() shows all methods of this object.
     """
 
     def __repr__(self, level=0):
@@ -69,10 +69,10 @@ class UniversalContainer():
 
         return '\n'.join(rep)
 
-    def listKey(self):
+    def getKeys(self):
         return [item for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
 
-    def listMethod(self):
+    def getMethods(self):
         return [item for item in dir(self) if callable(getattr(self, item)) and not item.startswith("__")]
 
 
@@ -92,20 +92,52 @@ class ConvertedContainer(SettingContainer):
     Usage
     - Convert dict to object form (recursive).
     """
-    
+
     def __new__(cls, data):
         from collections import Iterable
 
         if isinstance(data, dict):
             return super().__new__(cls)
         elif isinstance(data, Iterable) and not isinstance(data, str):
-            return type(data)(ConvertedContainer(value) for value in data)
+            return type(data)(cls(value) for value in data)
         else:
             return data
 
     def __init__(self, data):
         for i in range(len(data.keys())):
-            self.__dict__[list(data.keys())[i]] = ConvertedContainer(list(data.values())[i])
+            self.__dict__[list(data.keys())[i]] = type(self)(list(data.values())[i])
+
+
+class Session(UniversalContainer):
+    """
+    Conveniently storage of session info
+    - Use 'load' class method to load session file with specified path.
+    - Use key=value pairs to give initial values to session attributes.
+    - If the session file is successfully loaded, the key=value pairs will be ignored.
+    - Use 'dump' instance method to save session file with specified path.
+    """
+
+    def dump(self, path):
+        import pickle
+
+        with open(path, 'wb') as f: pickle.dump(self, f)
+        print('Dumped session at \'{}\'.\n{}'.format(path, self))
+    
+    @classmethod
+    def load(cls, path, **kwarg):
+        import pickle
+
+        try:
+            with open(path, 'rb') as f:
+                session = pickle.load(f, encoding='utf-8')
+                print('Loaded session at \'{}\'.\n{}'.format(path, session))
+        except:
+            session = cls()
+            for key, value in kwarg.items():
+                session.__dict__[key] = value
+            print('Did not find session at \'{}\'. Initiated a new session.\n{}'.format(path, session))
+
+        return session
 
 
 def getConfigObj(path):
