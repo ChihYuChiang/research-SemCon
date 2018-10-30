@@ -23,7 +23,7 @@ def imgDownload():
     #--Search image
     if False:
         #Perform search
-        data.responses, session.currentSearchId = ImgSearch.searchMappingBatch(data.mapping, startId=session.currentSearchId, batchSize=400)
+        data.responses, session.currentSearchId = ImgSearch.searchBatch(data.mapping, startId=session.currentSearchId, batchSize=400)
 
         #Save search responses to file
         util.writeJsls(data.responses, setting.path.imageResponse)
@@ -46,9 +46,24 @@ def imgDownload():
     with open(setting.path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
 
     #Perform download
-    session.currentDownloadId, session.failedUrl = ImgDownload.get8Save_n(data.urlInfo, startId=session.currentDownloadId, batchSize=3, urlIdRange=[95, 100])
+    session.currentDownloadId, session.failedUrl = ImgDownload.get8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=3, urlIdRange=[95, 100])
 
 
     #--End session
     #Store session info offline
     session.dump(setting.path.session)
+
+
+#--Process image into cleaned format for input
+def imgPreprocess():
+    #Cropping to be square
+
+    #Scaling to 100px by 100px
+
+    #Img selection: separate gameplay, logo?
+
+    #Mean, standard deviation of input pixel
+
+    #Normalizing
+
+    #Augmentation: Perturbation, rotation

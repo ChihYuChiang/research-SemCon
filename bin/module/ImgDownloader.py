@@ -13,7 +13,7 @@ class Mapping():
 
     #Process from source data
     def generate():
-        df = pd.read_csv(setting.path.textDf, usecols=['Game'], keep_default_na=False).drop_duplicates().reset_index(drop=True)
+        df = pd.read_csv(setting.path.textDfCombined, usecols=['Game'], keep_default_na=False).drop_duplicates().reset_index(drop=True)
         return bidict(df.to_dict()['Game'])
 
     @classmethod
@@ -21,7 +21,7 @@ class Mapping():
         with open(setting.path.mapping, 'wb') as f: pickle.dump(cls.generate(), f)
     
     @classmethod
-    def test(cls):
+    def test_generate(cls):
         mapping = cls.generate()
         print(mapping[1])
         print(mapping.inv['Expeditions: Viking'])
@@ -44,18 +44,12 @@ class Searcher():
         response.raise_for_status()
         cls.logger.debug('Searched \"{}\".'.format(targetTerm))
         return response.json()
-    
-    @classmethod
-    def test_search(cls):
-        #Check Append Results for Jupyter to render
-        response = cls.search('puppies')
-        pprint(response)
 
     @classmethod
-    def searchMappingBatch(cls, mapping, startId, batchSize=5, currentResponses=[]):
+    def searchBatch(cls, mapping, startId, batchSize=5):
         ids = list(mapping)[startId : startId + batchSize] #Python tolerates slicing index go over len
         idIter = iter(ids)
-        responses = currentResponses
+        responses = []
     
         while True:
             try:
@@ -83,6 +77,12 @@ class Searcher():
         for response in responses:
             urlInfo.append(cls.parseResponse_1(response))
         return urlInfo
+    
+    @classmethod
+    def test_search(cls):
+        #Check Append Results for Jupyter to render
+        response = cls.search('puppies')
+        pprint(response)
 
 
 #--Download img
@@ -93,33 +93,46 @@ class Downloader():
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)
-    def get8Save_1(cls, targetId, urlId, url):
+    def get(cls, targetId, url):
         try:
-            r = requests.get(url, stream=True, timeout=5) #Time out to stop waiting for a response
-            r.raise_for_status()
+            response = requests.get(url, stream=True, timeout=5) #Time out to stop waiting for a response
+            response.raise_for_status()
         except:
             cls.logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, sys.exc_info()[0]))
             return False
-        
+        return response
+
+    @classmethod
+    def save(cls, response, targetId, urlId):
         #TODO: Make separate folders
         fileName = '{}-{}.jpg'.format(targetId, urlId)
         path = '{}{}'.format(setting.path.imageFolder, fileName)
         with open(path, 'wb') as f:
-            for chunk in r.iter_content(1024): #'1024 = chunk size
+            for chunk in response.iter_content(1024): #'1024 = chunk size
                 f.write(chunk)
         cls.logger.debug('Downloaded {}.'.format(fileName))
-        return True
 
     @classmethod
-    def get8Save_n(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
+    def get8SaveBatch(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
         failedItems = []
 
         #Download certain range of urlId of a target
         for item in urlInfo[startId : startId + batchSize]:
             targetId = item[0]
             for url8Id in item[1][urlIdRange[0]:urlIdRange[1]]:
-                success = cls.get8Save_1(targetId, *url8Id)
-                if not success: failedItems.append((targetId, url8Id[0]))
+                urlId, url = url8Id
+                response = cls.get(targetId, url)
+                if not response: failedItems.append((targetId, urlId))
+                else: cls.save(response, targetId, urlId)
         
         cls.logger.info('Finished downloads at {} (included).\nAccumulated {} failed items.'.format(targetId, len(failedItems)))
         return targetId + 1, failedItems
+    
+    @classmethod
+    def test_get(cls):
+        from PIL import Image
+        from io import BytesIO
+
+        response = cls.get('t', 'https://assets-cdn.github.com/images/modules/open_graph/github-mark.png')
+        img = Image.open(BytesIO(response.content))
+        img.show()
