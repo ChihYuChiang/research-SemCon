@@ -38,8 +38,9 @@ class Searcher():
     @classmethod
     @util.FuncDecorator.delayOperation(1)
     def search(cls, targetTerm):
-        cls.setting.params['q'] = targetTerm
-        response = requests.get(cls.setting.url, headers=cls.setting.headers, params=cls.setting.params)
+        params = setting.config.ImgDownloader.searcherParams.copy()
+        params['q'] = targetTerm
+        response = requests.get(setting.config.ImgDownloader.searcherUrl, headers=setting.config.ImgDownloader.downloaderHeaders, params=params)
 
         response.raise_for_status()
         cls.logger.debug('Searched \"{}\".'.format(targetTerm))

@@ -1,6 +1,7 @@
 import nltk
 import bin.module.util as util
 
+
 cred = util.getConfigObj('ref/credential.yml')
 path = util.SettingContainer(
     session        = 'data/session.pkl',
@@ -30,7 +31,7 @@ config = util.SettingContainer(
     ),
 
     TextPreprocessor=util.SettingContainer(
-        stopWords=nltk.corpus.stopwords.words('english'),
+        stopwords=nltk.corpus.stopwords.words('english'),
         stemmer=nltk.stem.snowball.SnowballStemmer('english'),
         lemmatizer=nltk.stem.WordNetLemmatizer(),
         words2Filter=[],
