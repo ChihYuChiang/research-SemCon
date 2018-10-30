@@ -1,4 +1,8 @@
 from typing import List
+import os
+import pprint
+import bin.setting as setting
+
 
 #--Tokenize
 class Tokenizer():
@@ -6,70 +10,50 @@ class Tokenizer():
     Input: Raw article text.
     """
     def __init__(self, article: str):
-        self.output = article
+        self.result = article
         
-    def tokenize(self) -> List[str]:
+    def tokenize(self) -> List[List[str]]:
         """
         Output: [[], []].
         """
-        self.output += 'test'
+        self.result += 'test'
         return self
         #(itemId, articleId, [[], []])
         # df['Review_tokenized_sent'] = df['Review'].astype('str').apply(lambda x: [nltk.word_tokenize(s) for s in nltk.sent_tokenize(x)])
     
-    def flatSentences(self):
+    def flatSentences(self) -> List[str]:
         """
         Output: [].
         """
         # df['Review_tokenized_arti'] = df['Review'].astype('str').apply(lambda x: nltk.word_tokenize(re.sub(titleSubStr, '', x)))
 
-tokenizer = Tokenizer('hello, good')
-test = tokenizer.tokenize().tokenize().output
 
 #--Normalize
 class Normalizer():
 
-    def lower(): pass
+    def __init__(self, word: str):
+        self.result = word
 
-    def filterNonWord():
+    def lower(self):
+        self.result = self.result.lower()
+
+    def filterNonWord(self):
+        self.result = self.result if self.result.isalpha() else str()
     
-    def filterStop(): pass
+    def filterStop(self, stopwords=setting.config.TextPreprocessor.stopwords):
+        self.result = self.result if self.result not in stopwords else str()
 
-    def keep(): pass
+    def keep(self, words2Keep=setting.config.TextPreprocessor.words2Keep):
+        self.result = self.result if self.result in words2Keep else str()
 
-    def filter(): pass
+    def filter(self, words2Filter=setting.config.TextPreprocessor.words2Filter):
+        self.result = self.result if self.result not in words2Filter else str()
 
-    def lemmatize(): pass
+    def lemmatize(self, lemmatizer=setting.config.TextPreprocessor.lemmatizer):
+        self.result = lemmatizer.lemmatize(self.result)
 
-    def stem(): pass
-
-        #Lowering the case and removing non-words
-        workingIter = (w.lower() for w in tokenLst if w.isalpha())
-
-        #Lemmertize
-        if lemmer is not None:
-            workingIter = (lemmer.lemmatize(w) for w in workingIter)
-
-        #Stem
-        if stemmer is not None:
-            workingIter = (stemmer.stem(w) for w in workingIter)
-        
-        #Remove unwanted words by reg
-        if Xvocab is not None:
-            Xvocab_str = '|'.join(Xvocab)
-            workingIter = (w for w in workingIter if not re.match(Xvocab_str, w))
-
-        #Include ONLY wanted words by reg
-        if Ovocab is not None:
-            Ovocab_str = '|'.join(np.array(Ovocab))
-            workingIter = (w for w in workingIter if re.fullmatch(Ovocab_str, w))
-
-        #Remove stopwords
-        if stopwordLst is not None:
-            workingIter = (w for w in workingIter if w not in stopwordLst)
-        return list(workingIter)
-
-    def test(): pass
+    def stem(self, stemmer=setting.config.TextPreprocessor.stemmer):
+        self.result = stemmer.stem(self.result)
 
 Normalizer(x).filterStop().filter().keep().lemmatize().stem()
 
