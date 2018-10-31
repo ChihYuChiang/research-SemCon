@@ -12,29 +12,28 @@ path = util.SettingContainer(
     imageUrl       = 'data/image-url.pkl',
     imageFolder    = 'data/img/'
 )
-config = util.SettingContainer(
-    ImgDownloader=util.SettingContainer(
-        searcherUrl=cred.BingImageSearch.url,
-        searcherHeaders={
-            'Ocp-Apim-Subscription-Key': cred.BingImageSearch.key
-        },
-        searcherParams={
-            'q'          : '',
-            'license'    : 'all',
-            'imageType'  : 'photo',
-            'count'      : 100,
-            'safeSearch' : 'off',
-            'maxFileSize': 520192,
-            'minFileSize': 0  #byte
-        },
-        downloaderHeaders={'user-agent': 'my-app/0.0.1'}
-    ),
 
-    TextPreprocessor=util.SettingContainer(
-        stopwords=nltk.corpus.stopwords.words('english'),
-        stemmer=nltk.stem.snowball.SnowballStemmer('english'),
-        lemmatizer=nltk.stem.WordNetLemmatizer(),
-        words2Filter=[],
-        words2Keep=[]
-    )
+imgDownloader = util.SettingContainer(
+    searcherUrl=cred.BingImageSearch.url,
+    searcherHeaders={
+        'Ocp-Apim-Subscription-Key': cred.BingImageSearch.key
+    },
+    searcherParams={
+        'q'          : '',
+        'license'    : 'all',
+        'imageType'  : 'photo',
+        'count'      : 100,
+        'safeSearch' : 'off',
+        'maxFileSize': 520192,
+        'minFileSize': 0  #byte
+    },
+    downloaderHeaders={'user-agent': 'my-app/0.0.1'}
+)
+
+textPreprocessor = util.SettingContainer(
+    stopwords=nltk.corpus.stopwords.words('english'),
+    stemmer=nltk.stem.snowball.SnowballStemmer('english').stem,
+    lemmatizer=nltk.stem.WordNetLemmatizer().lemmatize,
+    words2Filter=[],
+    words2Keep=[]
 )

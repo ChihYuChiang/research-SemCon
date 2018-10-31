@@ -5,7 +5,7 @@ import sys
 from pprint import pprint
 from bidict import bidict
 import bin.module.util as util
-import bin.setting as setting
+from bin.setting import path, imgDownloader as config
 
 
 #--Prepare name-id 2-way mapping
@@ -13,12 +13,12 @@ class Mapping():
 
     #Process from source data
     def generate():
-        df = pd.read_csv(setting.path.textDfCombined, usecols=['Game'], keep_default_na=False).drop_duplicates().reset_index(drop=True)
+        df = pd.read_csv(path.textDfCombined, usecols=['Game'], keep_default_na=False).drop_duplicates().reset_index(drop=True)
         return bidict(df.to_dict()['Game'])
 
     @classmethod
     def export(cls):
-        with open(setting.path.mapping, 'wb') as f: pickle.dump(cls.generate(), f)
+        with open(path.mapping, 'wb') as f: pickle.dump(cls.generate(), f)
     
     @classmethod
     def test_generate(cls):
@@ -31,16 +31,18 @@ class Mapping():
 #--Acquire img urls (Bing)
 class Searcher():
 
-    #Bing setup and init logger
+    #Bing setup within cls to improve performance
     #https://docs.microsoft.com/en-us/rest/api/cognitiveservices/bing-images-api-v7-reference
     logger = util.initLogger(loggerName='ImgDownloader.Searcher')
+    params = config.searcherParams.copy()
+    headers = config.downloaderHeaders
+    searchUrl = config.searcherUrl
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)
     def search(cls, targetTerm):
-        params = setting.config.ImgDownloader.searcherParams.copy()
-        params['q'] = targetTerm
-        response = requests.get(setting.config.ImgDownloader.searcherUrl, headers=setting.config.ImgDownloader.downloaderHeaders, params=params)
+        cls.params['q'] = targetTerm
+        response = requests.get(cls.searcherUrl, headers=cls.headers, params=cls.params)
 
         response.raise_for_status()
         cls.logger.debug('Searched \"{}\".'.format(targetTerm))
@@ -91,10 +93,11 @@ class Downloader():
 
     #Init logger and http request header
     logger = util.initLogger(loggerName='ImgDownloader.Downloader')
+    imageFolder = path.imageFolder
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)
-    def get(cls, targetId, url):
+    def download(cls, targetId, url):
         try:
             response = requests.get(url, stream=True, timeout=5) #Time out to stop waiting for a response
             response.raise_for_status()
@@ -107,14 +110,14 @@ class Downloader():
     def save(cls, response, targetId, urlId):
         #TODO: Make separate folders
         fileName = '{}-{}.jpg'.format(targetId, urlId)
-        path = '{}{}'.format(setting.path.imageFolder, fileName)
+        path = '{}{}'.format(cls.imageFolder, fileName)
         with open(path, 'wb') as f:
             for chunk in response.iter_content(1024): #'1024 = chunk size
                 f.write(chunk)
         cls.logger.debug('Downloaded {}.'.format(fileName))
 
     @classmethod
-    def get8SaveBatch(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
+    def download8SaveBatch(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
         failedItems = []
 
         #Download certain range of urlId of a target
@@ -122,7 +125,7 @@ class Downloader():
             targetId = item[0]
             for url8Id in item[1][urlIdRange[0]:urlIdRange[1]]:
                 urlId, url = url8Id
-                response = cls.get(targetId, url)
+                response = cls.download(targetId, url)
                 if not response: failedItems.append((targetId, urlId))
                 else: cls.save(response, targetId, urlId)
         
@@ -130,10 +133,10 @@ class Downloader():
         return targetId + 1, failedItems
     
     @classmethod
-    def test_get(cls):
+    def test_download(cls):
         from PIL import Image
         from io import BytesIO
 
-        response = cls.get('t', 'https://assets-cdn.github.com/images/modules/open_graph/github-mark.png')
+        response = cls.download('t', 'https://assets-cdn.github.com/images/modules/open_graph/github-mark.png')
         img = Image.open(BytesIO(response.content))
         img.show()
