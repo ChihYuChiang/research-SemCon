@@ -235,6 +235,18 @@ def initLogger(loggerName, console=True, consoleLevel='DEBUG', fileLevel='INFO')
     return logger
 
 
+def createListFromGen(generator):
+    """
+    Transform a generator into a list (recursive)
+    """
+    from types import GeneratorType
+
+    if isinstance(generator, GeneratorType):
+        return [createListFromGen(i) for i in generator]
+    else:
+        return generator
+
+
 def createCustomHeader():
     """
     Create customized HTTP header with random user agent
