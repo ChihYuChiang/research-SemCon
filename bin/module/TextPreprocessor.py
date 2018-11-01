@@ -1,7 +1,8 @@
 import os
-import pprint
+import operator
 import nltk
 from typing import List
+from nltk.probability import FreqDist
 import bin.module.util as util
 from bin.setting import path, textPreprocessor as config
 
@@ -12,7 +13,7 @@ class Tokentype():
     SENTENCE = 'Tokentype_SENTENCE'
 
 
-#--Tokenize a list of articles
+#--Tokenize a list (generator) of articles
 class Tokenizer():
 
     def __init__(self, tokenType, articles):
@@ -96,29 +97,37 @@ class Normalizer():
 
 
 #--A df row generator
-#Parameters: chunkSize and noOfChunk both int
-#StartRow should be a multiple of chunkSize
-#Read in by chunk (save disk access times) but yield by row
-#Use next to get
 class DfDispatcher():
+    """
+    Read in by chunk (save disk access times) but yield by row
+    - `chunkSize` = how many rows to read per access.
+    - `startRow` allows skip first startRow - 1 rows. 
+    """
 
-    def __init__(self, filePath, chunkSize, startRow):
+    def __init__(self, filePath, startRow, chunkSize=1000):
         import pandas as pd
 
-        self.dfIter = pd.read_csv(filePath, chunksize=chunkSize)
-        self.startRow = startRow
+        #"cp1252", "ISO-8859-1", "utf-8"
+        self.dfChunks = pd.read_csv(filePath, encoding='cp1252', chunksize=chunkSize)
         self.curRow = 0
-        self.chunkSize = chunkSize
-
-        i = 0
-        while i <= startRow / chunkSize:
+        self.dfIter = self.__iter__()
+        
+        while self.curRow < startRow:
+            self.curRow += 1
             next(self.dfIter)
     
     def __iter__(self):
-        self.curRow += self.chunkSize
+        for chunk in self.dfChunks:
+            yield from chunk.iterrows() #Return (rowId, rowContent)
 
-        for chunk in self.dfIter:
-            yield from chunk.iterrows()
+    def __next__(self):
+        self.curRow += 1
+        return next(self.dfIter)
+    
+    def getCol(self, colName):
+        for chunk in self.dfChunks:
+            chunk.iterrows
+
 
 
 #--Average no of sentence/no of words
