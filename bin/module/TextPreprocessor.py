@@ -7,78 +7,90 @@ import bin.module.util as util
 from bin.setting import path, textPreprocessor as config
 
 
-#--Decide if keep sentence structure
-class Tokentype():
-    ARTICLE = 'Tokentype_ARTICLE'
-    SENTENCE = 'Tokentype_SENTENCE'
-
-
-#--Tokenize a list (generator) of articles
+#--Tokenize a list (generator) of articles with sentence structure
 class Tokenizer():
 
-    def __init__(self, tokenType, articles):
-        self.tokenType = tokenType
-        self.articles = articles
+    def __init__(self, articles=''):
+        self.result = articles
     
     def tokenize(self):
-        if self.tokenType == Tokentype.SENTENCE:
-            tokens = ((nltk.word_tokenize(s) for s in nltk.sent_tokenize(a)) for a in self.articles)
-        else:
-            tokens = (nltk.word_tokenize(a) for a in self.articles)
-        return self.tokenType, tokens
+        self.result = ((nltk.word_tokenize(st) for st in nltk.sent_tokenize(at)) for at in self.articles)
+    
+    def brief(self, tokens=None):
+        """
+        Input: tokens with sentence structure. Default to `self.result`.
+        """
+        if tokens is None: tokens = self.result
+
+        #Word frequency distribution by nltk
+        fdist = FreqDist((tk for at in tokens for st in at for tk in st))
+
+        nArticle = len(tokens)
+        nSentence = sum(map(lambda article: len(article), tokens))
+        nWord = fdist.N()
+
+        print('About the corpus')
+        print('- Number of articles:', nArticle)
+        print('- Number of sentences:', nSentence)
+        print('- Number of terms:', nWord)
+        print('- Number of unique terms:', fdist.B())
+        print('- Top terms:', sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
+        print('- Terms per sentence:', nWord / nSentence)
+        print('- Terms per article:', nWord / nArticle)
+        print('- Sentences per article:', nSentence / nArticle)
     
     @classmethod
     def test_tokenize(cls):
         """
-        Print out sample articles, tokens with sentence structure, and tokens without sentence structure
+        Print out sample articles and tokens with sentence structure
         """
         #2 articles with 2 sentences each
         articles = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge?', 'Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.']
         print(articles)
-        print(util.createListFromGen(cls(Tokentype.SENTENCE, articles).tokenize()[1]))
-        print(util.createListFromGen(cls(Tokentype.ARTICLE, articles).tokenize()[1]))
+        print(util.createListFromGen(cls(articles).tokenize().result[1]))
+    
+    @classmethod
+    def test_brief(cls):
+        tokens = [[['test', 'Is', 'gooD', '.'], ['gooD', 'world']], [['overhead', 'comes', 'from', 'gooD', 'speaking']]]
+        print(tokens)
+        cls().brief(tokens)
 
 
 #--Normalize a list of tokens, w/ or w/o sentence structure
 class Normalizer():
     """
-    Input (1 of the 2):
-    - Use tokenType for identification.
-    - List of articles, with list of sentences -> [[[words], [words]]].
-    - List of articles, with list of words -> [[words], [words]].
-    - ((generator A) if sentenceType else (generator B) for article in result)
+    Input: List of articles, with list of sentences -> [[[words], [words]]].
     """
 
-    def __init__(self, tokenType, tokens):
-        self.tokenTypeSentence = tokenType == Tokentype.SENTENCE
+    def __init__(self, tokens):
         self.result = tokens
     
     def lower(self):
-        self.result = (((tk.lower() for tk in st) for st in a) if self.tokenTypeSentence else (tk.lower() for tk in a) for a in self.result)
+        self.result = ((tk.lower() for tk in st) for st in at)
         return self
 
     def filterNonWord(self):
-        self.result = (((tk for tk in st if tk.isalpha()) for st in a) if self.tokenTypeSentence else (tk for tk in a if tk.isalpha()) for a in self.result)
+        self.result = ((tk for tk in st if tk.isalpha()) for st in at)
         return self
     
     def filterStop(self, stopwords=config.stopwords):
-        self.result = (((tk for tk in st if tk not in stopwords) for st in a) if self.tokenTypeSentence else (tk for tk in a if tk not in stopwords) for a in self.result)
+        self.result = ((tk for tk in st if tk not in stopwords) for st in at)
         return self
 
     def keep(self, words2Keep=config.words2Keep):
-        self.result = (((tk for tk in st if tk in words2Keep) for st in a) if self.tokenTypeSentence else (tk for tk in a if tk in words2Keep) for a in self.result)
+        self.result = ((tk for tk in st if tk in words2Keep) for st in at)
         return self
 
     def filter(self, words2Filter=config.words2Filter):
-        self.result = (((tk for tk in st if tk not in words2Filter) for st in a) if self.tokenTypeSentence else (tk for tk in a if tk not in words2Filter) for a in self.result)
+        self.result = ((tk for tk in st if tk not in words2Filter) for st in ta)
         return self
 
     def lemmatize(self, lemmatizer=config.lemmatizer):
-        self.result = (((lemmatizer(tk) for tk in st) for st in a) if self.tokenTypeSentence else (lemmatizer(tk) for tk in a) for a in self.result)
+        self.result = ((lemmatizer(tk) for tk in st) for st in at)
         return self
 
     def stem(self, stemmer=config.stemmer):
-        self.result = (((stemmer(tk) for tk in st) for st in a) if self.tokenTypeSentence else (stemmer(tk) for tk in a) for a in self.result)
+        self.result = ((stemmer(tk) for tk in st) for st in at)
         return self
     
     @classmethod
@@ -86,14 +98,9 @@ class Normalizer():
         """
         Test chained lower(), filterStop(), stem()
         """
-        tokens_sentence = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']]]
-        tokens_article = [['test', 'Is', 'gooD', '.', 'HELLO', 'world'], ['overhead', 'comes', 'from', 'technically', 'speaking']]
-        print('Test w/ sentence structure:')
-        print(tokens_sentence)
-        print(util.createListFromGen(cls(Tokentype.SENTENCE, tokens_sentence).lower().filterStop().stem().result))
-        print('Test w/o sentence structure:')
-        print(tokens_article)
-        print(util.createListFromGen(cls(Tokentype.ARTICLE, tokens_article).lower().filterStop().stem().result))
+        tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']]]
+        print(tokens)
+        print(util.createListFromGen(cls(tokens).lower().filterStop().stem().result))
 
 
 #--A df row generator
@@ -101,42 +108,56 @@ class DfDispatcher():
     """
     Read in by chunk (save disk access times) but yield by row
     - `chunkSize` = how many rows to read per access.
-    - `startRow` allows skip first startRow - 1 rows. 
+    - Dispatch between `startRow` and `endRow` (inclusive).
+    - Return (rowId, rowContent) for each row.
     """
 
-    def __init__(self, filePath, startRow, chunkSize=1000):
+    def __init__(self, filePath, startRow=0, endRow=9, chunkSize=1000):
+        #"cp1252", "ISO-8859-1", "utf-8"
+        self.readCsvParam = {
+            'filepath_or_buffer': filePath,
+            'encoding': 'cp1252',
+            'chunksize': chunkSize,
+            'nrows': 1 + endRow
+        }
+        self.startRow = startRow
+        self.dfIter = self.__iter__()
+
+    def __iter__(self):
         import pandas as pd
 
-        #"cp1252", "ISO-8859-1", "utf-8"
-        self.dfChunks = pd.read_csv(filePath, encoding='cp1252', chunksize=chunkSize)
-        self.curRow = 0
-        self.dfIter = self.__iter__()
-        
-        while self.curRow < startRow:
-            self.curRow += 1
-            next(self.dfIter)
-    
-    def __iter__(self):
-        for chunk in self.dfChunks:
-            yield from chunk.iterrows() #Return (rowId, rowContent)
+        dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.iterrows())
+        i = 0
+        while i < self.startRow:
+            i += 1
+            next(dfIter)
+        return dfIter
 
     def __next__(self):
-        self.curRow += 1
         return next(self.dfIter)
     
     def getCol(self, colName):
-        for chunk in self.dfChunks:
-            chunk.iterrows
+        for i, row in self:
+            yield row[colName]
 
 
+#--Emb
+class EmbOperator():
+    pass
+    #Get generic embedding
+    #word <-> word id
+    #word id -> emb
+    #Get word emb
+    #Get sentence avg emb
+    #Get article avg emb
 
-#--Average no of sentence/no of words
-class Briefer():
-    #Word frequency distribution by nltk
-    fdist = FreqDist([i for i in flatten_list(text_preprocessed)])
+import gensim
+#--Load Google's pre-trained Word2Vec model.
+model = gensim.models.Word2Vec.load_word2vec_format(r'..\reference\GoogleNews\GoogleNews-vectors-negative300.bin', binary=True)
 
-    #Observe result
-    print('Unique terms:', fdist.B())
-    print('Total terms:', fdist.N())
-    sorted(fdist.items(), key=operator.itemgetter(1), reverse=True) #Top terms
-        
+#Keywords pool
+keyWords_raw = pd.read_csv(r'..\data\process\keywords_expand.csv', encoding='utf-8', header=None)[0].tolist()
+
+#Make lower-case
+keyWords_raw = [word.lower() for word in keyWords_raw]
+print(len(keyWords_raw))
