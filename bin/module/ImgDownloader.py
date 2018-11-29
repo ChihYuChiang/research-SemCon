@@ -35,14 +35,14 @@ class Searcher():
     #https://docs.microsoft.com/en-us/rest/api/cognitiveservices/bing-images-api-v7-reference
     logger = util.initLogger(loggerName='ImgDownloader.Searcher')
     params = config.searcherParams.copy()
-    headers = config.downloaderHeaders
+    headers = config.searcherHeaders
     searchUrl = config.searcherUrl
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)
     def search(cls, targetTerm):
         cls.params['q'] = targetTerm
-        response = requests.get(cls.searcherUrl, headers=cls.headers, params=cls.params)
+        response = requests.get(cls.searchUrl, headers=cls.headers, params=cls.params)
 
         response.raise_for_status()
         cls.logger.debug('Searched \"{}\".'.format(targetTerm))

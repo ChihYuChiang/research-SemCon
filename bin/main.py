@@ -7,7 +7,7 @@ from bin.setting import path
 
 #--Initialize session and data storage
 data = util.UniversalContainer()
-session = util.Session.load(setting.path.session,
+session = util.Session.load(path.session,
     currentDownloadId=0,
     currentSearchId=0
 )
