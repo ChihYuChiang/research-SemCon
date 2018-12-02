@@ -56,10 +56,15 @@ def imgDownload():
 
 def textPreprocess():
     #sentence vec
+
     #tokenized main, with exp only, remove stop, remove nonword
+
     #tokenized comment, with exp + stop, keep nonword
+
     #Tokenized comment, with exp only
+
     #List of exp word
+
     #emb - word 2 way table
 
 

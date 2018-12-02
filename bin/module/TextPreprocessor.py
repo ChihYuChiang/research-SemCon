@@ -1,6 +1,9 @@
 import os
 import operator
 import nltk
+import gensim
+import pandas as pd
+import numpy as np
 from typing import List
 from nltk.probability import FreqDist
 import bin.module.util as util
@@ -124,8 +127,6 @@ class DfDispatcher():
         self.dfIter = self.__iter__()
 
     def __iter__(self):
-        import pandas as pd
-
         dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.iterrows())
         i = 0
         while i < self.startRow:
@@ -143,21 +144,30 @@ class DfDispatcher():
 
 #--Emb
 class EmbOperator():
-    pass
-    #Get generic embedding
-    #word <-> word id
-    #word id -> emb
-    #Get word emb
-    #Get sentence avg emb
-    #Get article avg emb
+    
+    def loadPretrainedEmb8Keywords(path):
+        """
+        Load pretrained emb at `path` and exp keywords
+        """
+        emb = gensim.models.KeyedVectors.load_word2vec_format(path, binary=True)
+        print('Loaded pretrained embedding with', len(emb.index2word), 'words.')
 
-import gensim
-#--Load Google's pre-trained Word2Vec model.
-model = gensim.models.Word2Vec.load_word2vec_format(r'..\reference\GoogleNews\GoogleNews-vectors-negative300.bin', binary=True)
+        keyWords = pd.read_csv(path.expKeyword, encoding='utf-8', header=None)[0].tolist()
+        keyWords = [word.lower() for word in keyWords]
+        print('Load exp keywords of', len(keyWords), 'words.')
 
-#Keywords pool
-keyWords_raw = pd.read_csv(r'..\data\process\keywords_expand.csv', encoding='utf-8', header=None)[0].tolist()
+        return (emb, keywords)
 
-#Make lower-case
-keyWords_raw = [word.lower() for word in keyWords_raw]
-print(len(keyWords_raw))
+    def getSentenceEmb(at, emb):
+        """
+        Average emb by sentence.
+        - Return: [sent=array(300,)]
+        """
+        return [np.array([emb[tk] for tk in st]).mean(axis=0) for st in at]
+
+    def getArticleEmb(at, emb):
+        """
+        Average emb by article.
+        - Return: array(300,)
+        """
+        return np.array([emb[tk] for st in at for tk in st]).mean(axis=0)

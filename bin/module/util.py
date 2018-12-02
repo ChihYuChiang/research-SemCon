@@ -247,6 +247,21 @@ def createListFromGen(generator):
         return generator
 
 
+def flattenList(l, nLevel=-1):
+    """
+    Flatten list (recursive for `nLevel`)
+    - Parameter: `l`, a list; `nLevel`=-1 if extract all levels
+    - Return: a flattened list as a generator
+    """
+    import collections
+
+    for el in l:
+        if isinstance(el, collections.Sequence) and not isinstance(el, (str, bytes)) and nLevel != 0:
+            yield from flattenList(el, nLevel - 1)
+        else:
+            yield el
+
+
 def createCustomHeader():
     """
     Create customized HTTP header with random user agent
