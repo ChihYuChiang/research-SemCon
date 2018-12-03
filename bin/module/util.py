@@ -290,3 +290,38 @@ def createCustomHeader():
         request.headers['User-Agent'] = ua
     
     headers = {'User-Agent': 'my-app/0.0.1'}
+
+
+def divideSets(proportion, nSample, seed=1):
+    """
+    Acquire ids of arbitrary set division
+    - Given proportion and the number of samples, return ids (starts from 0) of each set [set, set, ...].
+    - An element in `proportion` represents a set.
+    - The proportion must sum to 1.
+    """
+    import numpy as np
+
+    assert sum(proportion) == 1, '`proportion` must sum to 1.'
+
+    #Reset np seed
+    np.random.seed(seed=seed)
+
+    #Number of indice for each set
+    nIds = np.around(np.array(proportion) * nSample)
+
+    #Shuffle the indice pool
+    rIndiceGen = np.arange(nSample)
+    np.random.shuffle(rIndiceGen)
+    rIndiceGen = (i for i in rIndiceGen)
+
+    #Assign indice to each set
+    ids = []
+    for nId in nIds:
+        id = []
+        while nId > 0:
+            try: id.append(next(rIndiceGen))
+            except StopIteration: break
+            nId -= 1
+        ids.append(id)
+
+    return ids
