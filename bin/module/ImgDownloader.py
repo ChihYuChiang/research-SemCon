@@ -93,7 +93,7 @@ class Searcher():
 #--Download img
 class Downloader():
 
-    #Init logger and http request header
+    #Init logger
     logger = util.initLogger(loggerName='ImgDownloader.Downloader')
     imageFolder = path.imageFolder
 
@@ -101,7 +101,7 @@ class Downloader():
     @util.FuncDecorator.delayOperation(1)
     def download(cls, targetId, url):
         try:
-            response = requests.get(url, stream=True, timeout=5) #Time out to stop waiting for a response
+            response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
             response.raise_for_status()
         except:
             cls.logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, sys.exc_info()[0]))

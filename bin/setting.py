@@ -1,4 +1,5 @@
 import nltk
+
 import bin.module.util as util
 
 
@@ -28,8 +29,7 @@ imgDownloader = util.SettingContainer(
         'safeSearch' : 'off',
         'maxFileSize': 520192,
         'minFileSize': 0  #byte
-    },
-    downloaderHeaders={'user-agent': 'my-app/0.0.1'}
+    }
 )
 
 textPreprocessor = util.SettingContainer(
