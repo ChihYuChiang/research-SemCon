@@ -66,7 +66,7 @@ class UniversalContainer():
             else:
                 attrStr = str(attr)
                 rep.append('-' * 3 * level + '.' + key)
-                rep.append('-' * 3 * level + ' ' + (attrStr[:100] + ' .. ' if len(attrStr) > 100 else attrStr))
+                rep.append('-' * 3 * level + ' ' + (attrStr[:100] + ' ...' if len(attrStr) > 100 else attrStr))
 
         return '\n'.join(rep)
 
@@ -122,7 +122,7 @@ class Session(UniversalContainer):
         import pickle
 
         with open(path, 'wb') as f: pickle.dump(self, f)
-        print('Dumped session at \'{}\'.\n{}'.format(path, self))
+        print('Dumped session at \'{}\'.'.format(path))
     
     @classmethod
     def load(cls, path, **kwarg):

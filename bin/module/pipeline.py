@@ -14,8 +14,8 @@ from bin.setting import path
 def initialize(sessionPath):
     data = util.UniversalContainer()
 
-    #Create id and game title mapping
-    data.mapping = ImgDownloader.Mapping.generate()
+    #Load id and game title mapping
+    with open(path.mapping, 'rb') as f: data.mapping = pickle.load(f)
 
     session = util.Session.load(sessionPath,
         currentDownloadId=0,
@@ -27,9 +27,11 @@ def initialize(sessionPath):
 #--Observe session outcome
 def observeOutcome(data, session):
     print('-' * 60)
-    print('session', session)
-    print('-' * 60)
-    print('data', data)
+    print('session')
+    print(session)
+    print('\n')
+    print('data')
+    print(data)
     print('-' * 60)
 
 
@@ -65,6 +67,15 @@ def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
 
     #Perform download
     session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=batchSize, urlIdRange=urlIdRange)
+
+
+#--Download failed image
+def imgDownload_reDownload(data, session):
+    #Load url info from file
+    with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
+    
+    #Perform redownload and update the failed list
+    session.failedUrl = ImgDownloader.Downloader.download8SaveFailed(data.urlInfo, session.failedUrl)
 
 
 def textPreprocess(): pass

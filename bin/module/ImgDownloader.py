@@ -126,7 +126,7 @@ class Downloader():
         except AssertionError:
             errMsg = 'urlInfo id={} does not match starId={}.'.format(urlInfo[startId][0], startId)
             cls.logger.error('Assertion error - ' + errMsg)
-            # raise AssertionError(errMsg)
+            raise AssertionError(errMsg)
 
         failedItems = []
         #Download certain range of urlId of a target
@@ -140,6 +140,16 @@ class Downloader():
         
         cls.logger.info('Finished downloads at {} (included).\nAccumulated {} failed items.'.format(targetId, len(failedItems)))
         return targetId + 1, failedItems
+    
+    @classmethod
+    def download8SaveFailed(cls, urlInfo, failedItems):
+        failedItems_updated = []
+        for failedItem in failedItems:
+            url = urlInfo[failedItem[0]][1][failedItem[1]][1]
+            response = cls.download(failedItem[0], url)
+            if not response: failedItems_updated.append(failedItem)
+            else: cls.save(response, *failedItem)
+        return failedItems_updated
     
     @classmethod
     def test_download(cls):
