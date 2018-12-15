@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 from typing import List
 from nltk.probability import FreqDist
+
 import bin.module.util as util
 from bin.setting import path, textPreprocessor as config
 

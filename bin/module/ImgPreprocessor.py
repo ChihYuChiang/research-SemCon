@@ -1,7 +1,8 @@
-import bin.module.util as util
 import numpy as np
 import cv2 #Python 3 prebuild: https://pypi.org/project/opencv-python/
 import matplotlib.pyplot as plt
+
+import bin.module.util as util
 
 
 #OpenCV follows BGR while Matplotlib RGB

@@ -4,6 +4,7 @@ import pickle
 import sys
 from pprint import pprint
 from bidict import bidict
+
 import bin.module.util as util
 from bin.setting import path, imgDownloader as config
 
@@ -49,7 +50,7 @@ class Searcher():
         return response.json()
 
     @classmethod
-    def searchBatch(cls, mapping, startId, batchSize=5):
+    def searchBatch(cls, mapping, startId, batchSize):
         ids = list(mapping)[startId : startId + batchSize] #Python tolerates slicing index go over len
         idIter = iter(ids)
         responses = []
@@ -79,6 +80,7 @@ class Searcher():
         urlInfo = []
         for response in responses:
             urlInfo.append(cls.parseResponse_1(response))
+        cls.logger.info('Parsed {} response items.'.format(len(urlInfo)))
         return urlInfo
     
     @classmethod
@@ -108,7 +110,6 @@ class Downloader():
 
     @classmethod
     def save(cls, response, targetId, urlId):
-        #TODO: Make separate folders
         fileName = '{}-{}.jpg'.format(targetId, urlId)
         path = '{}{}'.format(cls.imageFolder, fileName)
         with open(path, 'wb') as f:
@@ -117,13 +118,21 @@ class Downloader():
         cls.logger.debug('Downloaded {}.'.format(fileName))
 
     @classmethod
-    def download8SaveBatch(cls, urlInfo, startId, batchSize=5, urlIdRange=[0, 10]):
-        failedItems = []
+    def download8SaveBatch(cls, urlInfo, startId, batchSize, urlIdRange):
+        #urlIdRange = [0, 10] or False for all ids
+        #Make sure the ids in urlInfo matches the game ids specified
+        try:
+            assert urlInfo[startId][0] == startId
+        except AssertionError:
+            errMsg = 'urlInfo id={} does not match starId={}.'.format(urlInfo[startId][0], startId)
+            cls.logger.error('Assertion error - ' + errMsg)
+            # raise AssertionError(errMsg)
 
+        failedItems = []
         #Download certain range of urlId of a target
         for item in urlInfo[startId : startId + batchSize]:
             targetId = item[0]
-            for url8Id in item[1][urlIdRange[0]:urlIdRange[1]]:
+            for url8Id in (item[1][urlIdRange[0]:urlIdRange[1]] if urlIdRange else item[1]):
                 urlId, url = url8Id
                 response = cls.download(targetId, url)
                 if not response: failedItems.append((targetId, urlId))

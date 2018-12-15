@@ -1,0 +1,86 @@
+import pickle
+from os import listdir
+
+import bin.module.ImgDownloader as ImgDownloader
+# import bin.module.ImgPreprocessor as ImgPreprocessor
+# import bin.module.TextPreprocessor as TextPreprocessor
+# import bin.module.TextSummarizer as TextSummarizer
+
+import bin.module.util as util
+from bin.setting import path
+
+
+#--Initialization
+def initialize(sessionPath):
+    data = util.UniversalContainer()
+
+    #Create id and game title mapping
+    data.mapping = ImgDownloader.Mapping.generate()
+
+    session = util.Session.load(sessionPath,
+        currentDownloadId=0,
+        currentSearchId=0
+    )
+    return data, session
+
+
+#--Observe session outcome
+def observeOutcome(data, session):
+    print('-' * 60)
+    print('session', session)
+    print('-' * 60)
+    print('data', data)
+    print('-' * 60)
+
+
+#--Search image
+def imgDownload_search(data, session, batchSize=10):
+    #Perform search
+    data.responses, session.currentSearchId = ImgDownloader.Searcher.searchBatch(data.mapping, startId=session.currentSearchId, batchSize=batchSize)
+
+    #Save search responses to multiple files
+    util.writeJsls(data.responses, '{}{}.jsl'.format(path.imageResFolder, session.currentSearchId))
+
+
+#--Parse and consolidate response
+def imgDownload_parse(data):
+    with open(path.imageUrl, 'wb') as f:
+        data.urlInfo = []
+
+        for p in listdir(path.imageResFolder):
+            #Load search responses from file
+            data.responses = util.readJsls(path.imageResFolder + p)
+
+            #Parse responses for url info
+            data.urlInfo.extend(ImgDownloader.Searcher.parseResponse_n(data.responses))
+
+        #Save url info to file
+        pickle.dump(data.urlInfo, f)
+
+
+#--Download image
+def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
+    #Load url info from file
+    with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
+
+    #Perform download
+    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=batchSize, urlIdRange=urlIdRange)
+
+
+def textPreprocess(): pass
+    #sentence vec
+    #tokenized main, with exp only, remove stop, remove nonword
+    #tokenized comment, with exp + stop, keep nonword
+    #Tokenized comment, with exp only
+    #List of exp word
+    #emb - word 2 way table
+
+
+def imgPreprocess(): pass
+    #Cropping to be square
+    #Scaling to 100px by 100px
+    #Img selection: separate gameplay, logo?
+    #Mean, standard deviation of input pixel
+    #Normalizing
+    #Augmentation: Perturbation, rotation
+    #Detect anomaly image (not from the same game) 
