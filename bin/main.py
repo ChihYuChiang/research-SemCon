@@ -1,6 +1,10 @@
 import pickle
+from os import listdir
+
 import bin.module.ImgDownloader as ImgDownloader
-import bin.module.ImgPreprocessor as ImgPreprocessor
+# import bin.module.ImgPreprocessor as ImgPreprocessor
+# import bin.module.TextPreprocessor as TextPreprocessor
+# import bin.module.TextSummarizer as TextSummarizer
 import bin.module.util as util
 from bin.setting import path
 
@@ -25,28 +29,33 @@ def imgDownload():
         #Perform search
         data.responses, session.currentSearchId = ImgDownloader.Searcher.searchBatch(data.mapping, startId=session.currentSearchId, batchSize=400)
 
-        #Save search responses to file
-        util.writeJsls(data.responses, path.imageResponse)
+        #Save search responses to multiple files
+        util.writeJsls(data.responses, '{}{}.jsl'.format(path.imageResFolder, session.currentSearchId))
 
 
-    #--Parse response
+    #--Parse and consolidate response
     if False:
-        #Load search responses from file
-        data.responses = util.readJsls(path.imageResponse)
+        with open(path.imageUrl, 'wb') as f:
+            data.urlInfo = []
+            
+            for p in listdir(path.imageResFolder):
+                #Load search responses from file
+                data.responses = util.readJsls(p)
 
-        #Parse responses for url info
-        data.urlInfo = ImgDownloader.Searcher.parseResponse_n(data.responses)
+                #Parse responses for url info
+                data.urlInfo.extend(ImgDownloader.Searcher.parseResponse_n(data.responses))
 
-        #Save url info to file
-        with open(path.imageUrl, 'wb') as f: pickle.dump(data.urlInfo, f)
+            #Save url info to file
+            pickle.dump(data.urlInfo, f)
 
 
     #--Download image
-    #Load url info from file
-    with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
+    if False:
+        #Load url info from file
+        with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
 
-    #Perform download
-    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=3, urlIdRange=[95, 100])
+        #Perform download
+        session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=3, urlIdRange=[95, 100])
 
 
     #--End session

@@ -142,7 +142,7 @@ class DfDispatcher():
             yield row[colName]
 
 
-#--Emb
+#--Load experience keywords and embedding operations
 class EmbOperator():
     
     def loadPretrainedEmb8Keywords(path):
