@@ -37,10 +37,10 @@ class FuncDecorator():
         from time import sleep
         from random import random
         def wrapper(original_function):
-            def new_function(*args,**kwargs):
+            def new_function(*args, **kwargs):
                 sleep(0.7 * time + 0.6 * random() * time)
 
-                original_output = original_function(*args,**kwargs)   
+                original_output = original_function(*args, **kwargs)   
                 return original_output
             return new_function
         return wrapper
@@ -49,7 +49,7 @@ class FuncDecorator():
 class UniversalContainer():
     """
     Usage
-    - Print object to see all key and data (recursive).
+    - Print object to see all key and data (recursive). Maximum print len for each item is 100.
     - getKeys() shows all attribute keys of this object (current level).
     - getMethods() shows all methods of this object.
     """
@@ -64,8 +64,9 @@ class UniversalContainer():
                 rep.append('-' * 3 * level + '.' + key)
                 rep.append(attr.__repr__(level + 1))
             else:
+                attrStr = str(attr)
                 rep.append('-' * 3 * level + '.' + key)
-                rep.append('-' * 3 * level + ' ' + str(attr))
+                rep.append('-' * 3 * level + ' ' + (attrStr[:100] + ' .. ' if len(attrStr) > 100 else attrStr))
 
         return '\n'.join(rep)
 
