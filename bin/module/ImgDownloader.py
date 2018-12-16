@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import pickle
 import traceback
+import re
 from pprint import pprint
 from bidict import bidict
 from os import listdir
@@ -102,8 +103,23 @@ class Downloader():
         #Find the entry of the target Id
         return next((entry for entry in urlInfo if entry[0] == targetId), None) #If not found, return None
     
-    def identifyFailures():
-        pass
+    def identifyFailures(lastTargetId, urlIdRange):
+        #TODO: identify bad img file (can't read)
+        #E.g. 48-56.jpg in folder, lastTargetId=48
+        urlIdRange = urlIdRange or [0, 100] 
+
+        fullImgs = []
+        for i in range(lastTargetId + 1):
+            for j in range(*urlIdRange):
+                fullImgs.append((i, j))
+
+        curImgs = []
+        curImgNames = listdir(path.imageFolder)
+        for name in curImgNames:
+            match = re.match('(\d+)-(\d+)\.', name)
+            curImgs.append((int(match.group(1)), int(match.group(2))))
+    
+        return lastTargetId + 1, list(set(fullImgs) - set(curImgs))
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)

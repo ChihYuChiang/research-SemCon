@@ -74,6 +74,12 @@ def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
     session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=batchSize, urlIdRange=urlIdRange)
 
 
+#--Identify failed items from img result
+#Only use it when the session failed
+def imgDownload_identifyFailures(session, lastTargetId, urlIdRange=False):
+    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.identifyFailures(lastTargetId, urlIdRange)
+
+
 #--Download failed image
 def imgDownload_reDownload(data, session):
     #Load url info from file
