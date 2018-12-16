@@ -15,10 +15,12 @@ from bin.setting import path, textPreprocessor as config
 class Tokenizer():
 
     def __init__(self, articles=''):
+        self.logger = util.initLogger(loggerName='TextPreprocessor.Tokenizer')
         self.result = articles
     
     def tokenize(self):
         self.result = ((nltk.word_tokenize(st) for st in nltk.sent_tokenize(at)) for at in self.articles)
+        self.logger.info('Tokenized {} articles.'.format(len(self.result)))
     
     def brief(self, tokens=None):
         """
@@ -33,15 +35,15 @@ class Tokenizer():
         nSentence = sum(map(lambda article: len(article), tokens))
         nWord = fdist.N()
 
-        print('About the corpus')
-        print('- Number of articles:', nArticle)
-        print('- Number of sentences:', nSentence)
-        print('- Number of terms:', nWord)
-        print('- Number of unique terms:', fdist.B())
-        print('- Top terms:', sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
-        print('- Terms per sentence:', nWord / nSentence)
-        print('- Terms per article:', nWord / nArticle)
-        print('- Sentences per article:', nSentence / nArticle)
+        self.logger.info('About the corpus')
+        self.logger.info('- Number of articles:', nArticle)
+        self.logger.info('- Number of sentences:', nSentence)
+        self.logger.info('- Number of terms:', nWord)
+        self.logger.info('- Number of unique terms:', fdist.B())
+        self.logger.info('- Top terms:', sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
+        self.logger.info('- Terms per sentence:', nWord / nSentence)
+        self.logger.info('- Terms per article:', nWord / nArticle)
+        self.logger.info('- Sentences per article:', nSentence / nArticle)
     
     @classmethod
     def test_tokenize(cls):
@@ -67,6 +69,7 @@ class Normalizer():
     """
 
     def __init__(self, tokens):
+        self.logger = util.initLogger(loggerName='TextPreprocessor.Normalizer')
         self.result = tokens
     
     def lower(self):
