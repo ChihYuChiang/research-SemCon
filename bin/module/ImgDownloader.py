@@ -97,6 +97,10 @@ class Downloader():
     logger = util.initLogger(loggerName='ImgDownloader.Downloader')
     imageFolder = path.imageFolder
 
+    def retrieveUrlEntry(urlInfo, targetId):
+        #Find the entry of the target Id
+        return next((entry for entry in urlInfo if entry[0] == targetId), None) #If not found, return None
+
     @classmethod
     @util.FuncDecorator.delayOperation(1)
     def download(cls, targetId, url):
@@ -120,20 +124,19 @@ class Downloader():
     @classmethod
     def download8SaveBatch(cls, urlInfo, startId, batchSize, urlIdRange):
         #urlIdRange = [0, 10] or False for all ids
-        #Make sure the ids in urlInfo matches the game ids specified
-        try:
-            assert urlInfo[startId][0] == startId
-        except AssertionError:
-            errMsg = 'urlInfo id={} does not match starId={}.'.format(urlInfo[startId][0], startId)
-            cls.logger.error('Assertion error - ' + errMsg)
-            raise AssertionError(errMsg)
 
         failedItems = []
         #Download certain range of urlId of a target
-        for item in urlInfo[startId : startId + batchSize]:
-            targetId = item[0]
-            for url8Id in (item[1][urlIdRange[0]:urlIdRange[1]] if urlIdRange else item[1]):
-                urlId, url = url8Id
+        for targetId in range(startId, startId + batchSize):
+            targetEntry = cls.retrieveUrlEntry(urlInfo, targetId)
+            #Make sure the id is found
+            try: assert targetEntry
+            except AssertionError:
+                errMsg = 'TargetId {} did not found in `urlInfo`.'.format(targetId[startId][0], startId)
+                cls.logger.error('Assertion error - ' + errMsg)
+                raise AssertionError(errMsg)
+
+            for urlId, url in (targetEntry[1][urlIdRange[0]:urlIdRange[1]] if urlIdRange else targetEntry[1]):
                 response = cls.download(targetId, url)
                 if not response: failedItems.append((targetId, urlId))
                 else: cls.save(response, targetId, urlId)
@@ -145,7 +148,8 @@ class Downloader():
     def download8SaveFailed(cls, urlInfo, failedItems):
         failedItems_updated = []
         for failedItem in failedItems:
-            url = urlInfo[failedItem[0]][1][failedItem[1]][1]
+            targetEntry = cls.retrieveUrlEntry(urlInfo, failedItem[0])
+            url = targetEntry[1][failedItem[1]][1]
             response = cls.download(failedItem[0], url)
             if not response: failedItems_updated.append(failedItem)
             else: cls.save(response, *failedItem)

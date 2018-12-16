@@ -11,16 +11,20 @@ from bin.setting import path
 
 
 #--Initialization
-def initialize(sessionPath):
+#Provide the attributes to be overwritten in an obj
+def initialize(sessionPath, overwrite=False):
     data = util.UniversalContainer()
 
     #Load id and game title mapping
     with open(path.mapping, 'rb') as f: data.mapping = pickle.load(f)
-
-    session = util.Session.load(sessionPath,
-        currentDownloadId=0,
-        currentSearchId=0
-    )
+    
+    #Load session. If no file found, create new session with the template
+    newSession = {
+        'currentDownloadId': 0,
+        'currentSearchId': 0
+    }
+    session = util.Session.load(sessionPath, **newSession)
+    
     return data, session
 
 
@@ -29,7 +33,7 @@ def observeOutcome(data, session):
     print('-' * 60)
     print('session')
     print(session)
-    print('\n')
+    print('-' * 60)
     print('data')
     print(data)
     print('-' * 60)
@@ -58,6 +62,7 @@ def imgDownload_parse(data):
 
         #Save url info to file
         pickle.dump(data.urlInfo, f)
+        print('Pickled {} items\' urls.'.format(len(data.urlInfo)))
 
 
 #--Download image
