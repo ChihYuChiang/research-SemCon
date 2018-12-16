@@ -1,7 +1,7 @@
 import requests
 import pandas as pd
 import pickle
-import sys
+import traceback
 from pprint import pprint
 from bidict import bidict
 
@@ -66,7 +66,7 @@ class Searcher():
                 cls.logger.info('Finished searches at {} (included).'.format(targetId))
                 return responses, targetId + 1
             except:
-                cls.logger.error('Unexpected error - {}:\n{}'.format(targetTerm, sys.exc_info()[0]))
+                cls.logger.error('Unexpected error - {}:\n{}'.format(targetTerm, traceback.format_exc()))
                 return responses, targetId
     
     def parseResponse_1(response):
@@ -104,7 +104,7 @@ class Downloader():
             response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
             response.raise_for_status()
         except:
-            cls.logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, sys.exc_info()[0]))
+            cls.logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, traceback.format_exc()))
             return False
         return response
 

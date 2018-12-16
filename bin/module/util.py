@@ -66,7 +66,7 @@ class UniversalContainer():
             else:
                 attrStr = str(attr)
                 rep.append('-' * 3 * level + '.' + key)
-                rep.append('-' * 3 * level + ' ' + (attrStr[:100] + ' ...' if len(attrStr) > 100 else attrStr))
+                rep.append('-' * 3 * level + ' ' + (attrStr[:100] + ' \u2026' if len(attrStr) > 100 else attrStr)) #Unicode for horizontal ellipsis
 
         return '\n'.join(rep)
 
