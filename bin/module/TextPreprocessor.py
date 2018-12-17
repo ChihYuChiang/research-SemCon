@@ -10,17 +10,18 @@ from nltk.probability import FreqDist
 import bin.module.util as util
 from bin.setting import path, textPreprocessor as config
 
+logger = util.initLogger(loggerName='TextPreprocessor')
+
 
 #--Tokenize a list (generator) of articles with sentence structure
 class Tokenizer():
 
     def __init__(self, articles=''):
-        self.logger = util.initLogger(loggerName='TextPreprocessor.Tokenizer')
         self.result = articles
     
     def tokenize(self):
         self.result = ((nltk.word_tokenize(st) for st in nltk.sent_tokenize(at)) for at in self.articles)
-        self.logger.info('Tokenized {} articles.'.format(len(self.result)))
+        logger.info('Tokenized {} articles.'.format(len(self.result)))
     
     def brief(self, tokens=None):
         """
@@ -35,15 +36,15 @@ class Tokenizer():
         nSentence = sum(map(lambda article: len(article), tokens))
         nWord = fdist.N()
 
-        self.logger.info('About the corpus')
-        self.logger.info('- Number of articles:', nArticle)
-        self.logger.info('- Number of sentences:', nSentence)
-        self.logger.info('- Number of terms:', nWord)
-        self.logger.info('- Number of unique terms:', fdist.B())
-        self.logger.info('- Top terms:', sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
-        self.logger.info('- Terms per sentence:', nWord / nSentence)
-        self.logger.info('- Terms per article:', nWord / nArticle)
-        self.logger.info('- Sentences per article:', nSentence / nArticle)
+        logger.info('About the corpus')
+        logger.info('- Number of articles:', nArticle)
+        logger.info('- Number of sentences:', nSentence)
+        logger.info('- Number of terms:', nWord)
+        logger.info('- Number of unique terms:', fdist.B())
+        logger.info('- Top terms:', sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
+        logger.info('- Terms per sentence:', nWord / nSentence)
+        logger.info('- Terms per article:', nWord / nArticle)
+        logger.info('- Sentences per article:', nSentence / nArticle)
     
     @classmethod
     def test_tokenize(cls):
@@ -69,8 +70,11 @@ class Normalizer():
     """
 
     def __init__(self, tokens):
-        self.logger = util.initLogger(loggerName='TextPreprocessor.Normalizer')
         self.result = tokens
+    
+    def getResult(self):
+        logger.info('Normalized {} articles.'.format(len(self.result)))
+        return self.result
     
     def lower(self):
         self.result = ((tk.lower() for tk in st) for st in at)
@@ -107,7 +111,7 @@ class Normalizer():
         """
         tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']]]
         print(tokens)
-        print(util.createListFromGen(cls(tokens).lower().filterStop().stem().result))
+        print(util.createListFromGen(cls(tokens).lower().filterStop().stem().getResult()))
 
 
 #--A df row generator
@@ -119,20 +123,23 @@ class DfDispatcher():
     - Return (rowId, rowContent) for each row.
     """
 
-    def __init__(self, filePath, startRow=0, endRow=9, chunkSize=1000):
+    def __init__(self, filePath, startRow=0, endRow=None, chunkSize=1000):
         #"cp1252", "ISO-8859-1", "utf-8"
         self.readCsvParam = {
             'filepath_or_buffer': filePath,
             'encoding': 'cp1252',
             'chunksize': chunkSize,
-            'nrows': 1 + endRow
+            'nrows': 1 + endRow if endRow else None
         }
         self.startRow = startRow
         self.dfIter = self.__iter__()
 
+        logger.info('Initiated df dispatcher of \"{}\" from row {} to row {}.'.format(filePath, startRow, endRow or 'file ends'))
+
     def __iter__(self):
         dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.iterrows())
         i = 0
+        #TODO: try use send() instead
         while i < self.startRow:
             i += 1
             next(dfIter)
@@ -142,8 +149,7 @@ class DfDispatcher():
         return next(self.dfIter)
     
     def getCol(self, colName):
-        for i, row in self:
-            yield row[colName]
+        return (row[colName] for i, row in self)
 
 
 #--Load experience keywords and embedding operations
@@ -154,11 +160,11 @@ class EmbOperator():
         Load pretrained emb at `path` and exp keywords
         """
         emb = gensim.models.KeyedVectors.load_word2vec_format(path, binary=True)
-        print('Loaded pretrained embedding with', len(emb.index2word), 'words.')
+        logger.info('Loaded pretrained embedding with', len(emb.index2word), 'words.')
 
         keyWords = pd.read_csv(path.expKeyword, encoding='utf-8', header=None)[0].tolist()
         keyWords = [word.lower() for word in keyWords]
-        print('Load exp keywords of', len(keyWords), 'words.')
+        logger.info('Load exp keywords of', len(keyWords), 'words.')
 
         return (emb, keywords)
 
@@ -167,11 +173,15 @@ class EmbOperator():
         Average emb by sentence.
         - Return: [sent=array(300,)]
         """
-        return [np.array([emb[tk] for tk in st]).mean(axis=0) for st in at]
+        sentenceEmb = [np.array([emb[tk] for tk in st]).mean(axis=0) for st in at]
+        logger.info('Acquired sentence embedding of {} sentences.'.format(len(sentenceEmb)))
+        return sentenceEmb
 
     def getArticleEmb(at, emb):
         """
         Average emb by article.
         - Return: array(300,)
         """
-        return np.array([emb[tk] for st in at for tk in st]).mean(axis=0)
+        articleEmb = np.array([emb[tk] for st in at for tk in st]).mean(axis=0)
+        logger.info('Acquired article embedding of {} articles.'.format(len(articleEmb)))
+        return articleEmb
