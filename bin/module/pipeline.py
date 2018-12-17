@@ -9,6 +9,8 @@ import bin.module.ImgDownloader as ImgDownloader
 import bin.module.util as util
 from bin.setting import path
 
+logger = util.initLogger(loggerName='pipeline')
+
 
 #--Initialization
 #Provide the attributes to be overwritten in an obj
@@ -28,15 +30,16 @@ def initialize(sessionPath, overwrite=False):
     return data, session
 
 
+#TODO: Make it a decorator
 #--Observe session outcome
 def observeOutcome(data, session):
-    print('-' * 60)
-    print('session')
-    print(session)
-    print('-' * 60)
-    print('data')
-    print(data)
-    print('-' * 60)
+    logger.info('-' * 60)
+    logger.info('session')
+    logger.info(session)
+    logger.info('-' * 60)
+    logger.info('data')
+    logger.info(data)
+    logger.info('-' * 60)
 
 
 #--Search image
@@ -62,7 +65,7 @@ def imgDownload_parse(data):
 
         #Save url info to file
         pickle.dump(data.urlInfo, f)
-        print('Pickled {} items\' urls.'.format(len(data.urlInfo)))
+        logger.info('Pickled {} items\' urls.'.format(len(data.urlInfo)))
 
 
 #--Download image

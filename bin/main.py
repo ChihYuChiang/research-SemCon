@@ -11,14 +11,17 @@ data, session = pipeline.initialize(path.session)
 pipeline.imgDownload_search(data, session, batchSize=2)
 pipeline.imgDownload_parse(data)
 pipeline.imgDownload_download(data, session, batchSize=2)
+pipeline.imgDownload_identifyFailures(session, lastTargetId=48)
 pipeline.imgDownload_reDownload(data, session)
 '''
+pipeline.imgDownload_download(data, session, batchSize=2)
 
 
 #--Observe session outcome
 pipeline.observeOutcome(data, session)
 
-
 #--End session
+#TODO: Slack notification
+#https://medium.com/@koitaroh/make-notifications-with-slack-api-when-python-experiment-is-done-c74539c1e4e9
 #Store session info offline
 session.dump(path.session)
