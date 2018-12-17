@@ -103,7 +103,8 @@ class Downloader():
         #Find the entry of the target Id
         return next((entry for entry in urlInfo if entry[0] == targetId), None) #If not found, return None
     
-    def identifyFailures(lastTargetId, urlIdRange):
+    @classmethod    
+    def identifyFailures(cls, lastTargetId, urlIdRange):
         #TODO: identify bad img file (can't read)
         #E.g. 48-56.jpg in folder, lastTargetId=48
         urlIdRange = urlIdRange or [0, 100] 
@@ -118,8 +119,11 @@ class Downloader():
         for name in curImgNames:
             match = re.match('(\d+)-(\d+)\.', name)
             curImgs.append((int(match.group(1)), int(match.group(2))))
-    
-        return lastTargetId + 1, list(set(fullImgs) - set(curImgs))
+        
+        failedUrl = list(set(fullImgs) - set(curImgs))
+
+        cls.logger.info('Identified {} failed downloads.'.format(len(failedUrl)))
+        return lastTargetId + 1, failedUrl
 
     @classmethod
     @util.FuncDecorator.delayOperation(1)

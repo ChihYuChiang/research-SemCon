@@ -71,7 +71,10 @@ def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
     with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
 
     #Perform download
-    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=batchSize, urlIdRange=urlIdRange)
+    session.currentDownloadId, newlyFailedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=batchSize, urlIdRange=urlIdRange)
+
+    #Expand failedUrl
+    session.failedUrl.extend(newlyFailedUrl)
 
 
 #--Identify failed items from img result
