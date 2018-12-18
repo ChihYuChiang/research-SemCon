@@ -3,6 +3,7 @@ import pandas as pd
 import pickle
 import traceback
 import re
+import math
 import concurrent.futures
 from pprint import pprint
 from bidict import bidict
@@ -134,10 +135,13 @@ class Downloader():
             logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, traceback.format_exc()))
             return False
 
+
     def save(response, targetId, urlId):
         try:
             fileName = '{}-{}.jpg'.format(targetId, urlId)
-            filePath = '{}{}'.format(path.imageFolder, fileName)
+            folderPath = path.imageFolder + 'img-' + str(math.ceil((targetId + 1) / 1000) * 1000) + '/'
+            util.makeDirAvailable(folderPath)
+            filePath = '{}{}'.format(folderPath, fileName)
             with open(filePath, 'wb') as f:
                 for chunk in response.iter_content(1024): #'1024 = chunk size
                     f.write(chunk)

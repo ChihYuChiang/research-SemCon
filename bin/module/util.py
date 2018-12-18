@@ -323,3 +323,13 @@ def divideSets(proportion, nSample, seed=1):
         ids.append(id)
 
     return ids
+
+
+def makeDirAvailable(directory):
+    """
+    Make sure the directory is available. If not, create one. (including all intermediate-level directories)
+    """
+    import os
+
+    if not os.path.exists(directory):
+        os.makedirs(directory)
