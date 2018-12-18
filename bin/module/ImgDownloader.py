@@ -7,7 +7,7 @@ import math
 import concurrent.futures
 from pprint import pprint
 from bidict import bidict
-from os import listdir
+from os import walk
 
 import bin.module.util as util
 from bin.setting import path, imgDownloader as config
@@ -106,6 +106,7 @@ class Downloader():
     
     def identifyFailures(lastTargetId, urlIdRange):
         #TODO: identify bad img file (can't read)
+        #Target the external data lake
         #E.g. 48-56.jpg in folder, lastTargetId=48
         urlIdRange = urlIdRange or [0, 100] 
 
@@ -115,7 +116,9 @@ class Downloader():
                 fullImgs.append((i, j))
 
         curImgs = []
-        curImgNames = listdir(path.imageFolder)
+        curImgNames = [] #Retrieve the file names in the directory recursively
+        for (dirpath, dirnames, filenames) in walk(path.dataLake.imageFolder):
+            curImgNames.extend(filenames)
         for name in curImgNames:
             match = re.match('(\d+)-(\d+)\.', name)
             curImgs.append((int(match.group(1)), int(match.group(2))))
@@ -125,7 +128,6 @@ class Downloader():
         logger.info('Identified {} failed downloads.'.format(len(failedUrl)))
         return lastTargetId + 1, failedUrl
 
-    @util.FuncDecorator.delayOperation(1)
     def download(targetId, url):
         try:
             response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
@@ -134,7 +136,6 @@ class Downloader():
         except:
             logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, traceback.format_exc()))
             return False
-
 
     def save(response, targetId, urlId):
         try:

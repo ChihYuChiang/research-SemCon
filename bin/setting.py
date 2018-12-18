@@ -4,6 +4,7 @@ import bin.module.util as util
 
 
 cred = util.getConfigObj('ref/credential.yml')
+path_dataLake = 'E:/Repository/Data/' #External data storage
 path = util.SettingContainer(
     session        = 'data/session.pkl',
     mapping        = 'data/name-id-mapping.pkl',
@@ -13,15 +14,19 @@ path = util.SettingContainer(
     expKeyword     = 'data/text/keywords.csv',
     imageUrl       = 'data/image-url.pkl',
     imageResFolder = 'data/img-response/',
-    imageFolder    = 'data/img/'
+    imageFolder    = 'data/img/',
+    
+    dataLake = util.SettingContainer(
+        imageFolder = path_dataLake + 'Game Image/img/'
+    )
 )
 
 imgDownloader = util.SettingContainer(
-    searcherUrl=cred.BingImageSearch.url,
-    searcherHeaders={
+    searcherUrl = cred.BingImageSearch.url,
+    searcherHeaders = {
         'Ocp-Apim-Subscription-Key': cred.BingImageSearch.key
     },
-    searcherParams={
+    searcherParams = {
         'q'          : '',
         'license'    : 'all',
         'imageType'  : 'photo',
@@ -33,9 +38,9 @@ imgDownloader = util.SettingContainer(
 )
 
 textPreprocessor = util.SettingContainer(
-    stopwords=nltk.corpus.stopwords.words('english'),
-    stemmer=nltk.stem.snowball.SnowballStemmer('english').stem,
-    lemmatizer=nltk.stem.WordNetLemmatizer().lemmatize,
-    words2Filter=[],
-    words2Keep=[]
+    stopwords    = nltk.corpus.stopwords.words('english'),
+    stemmer      = nltk.stem.snowball.SnowballStemmer('english').stem,
+    lemmatizer   = nltk.stem.WordNetLemmatizer().lemmatize,
+    words2Filter = [],
+    words2Keep   = []
 )
