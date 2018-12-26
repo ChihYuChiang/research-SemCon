@@ -284,7 +284,13 @@ def createCustomHeader():
     #Randomly select one from the candidates and update request header
     headers = {
         'User-Agent': random.choice(uaCandidates),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Accept-Language': 'en-US;q=0.8,en;q=0.7',
+        'Connection': 'keep-alive',
+        'Referer': 'https://www.google.com/',
+        'Upgrade-Insecure-Requests': '1',
+        'X-Https': '1'
     }
 
     return headers

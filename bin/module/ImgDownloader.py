@@ -104,16 +104,18 @@ class Downloader():
         #Find the entry of the target Id
         return next((entry for entry in urlInfo if entry[0] == targetId), None) #If not found, return None
     
-    def identifyFailures(lastTargetId, urlIdRange):
+    @classmethod
+    def identifyFailures(cls, urlInfo, lastTargetId, urlIdRange):
         #TODO: identify bad img file (can't read)
         #Target the external data lake
         #E.g. 48-56.jpg in folder, lastTargetId=48
-        urlIdRange = urlIdRange or [0, 100] 
+        urlIdRange = urlIdRange or [0, 100]
 
         fullImgs = []
         for i in range(lastTargetId + 1):
+            targetLen = len(cls.retrieveUrlEntry(urlInfo, i)[1])
             for j in range(*urlIdRange):
-                fullImgs.append((i, j))
+                if targetLen > j: fullImgs.append((i, j))
 
         curImgs = []
         curImgNames = [] #Retrieve the file names in the directory recursively
@@ -158,7 +160,7 @@ class Downloader():
 
         failedItems = []
         #Download certain range of urlId of a target
-        for targetId in range(startId, startId + batchSize):
+        for targetId in range(startId, min(startId + batchSize, len(urlInfo) - 1)):
             targetEntry = cls.retrieveUrlEntry(urlInfo, targetId)
 
             #Make sure the id is found

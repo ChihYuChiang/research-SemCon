@@ -17,8 +17,13 @@ logger = util.initLogger(loggerName='pipeline')
 def initialize(sessionPath, overwrite=False):
     data = util.UniversalContainer()
 
-    #Load id and game title mapping
-    with open(path.mapping, 'rb') as f: data.mapping = pickle.load(f)
+    try:
+        #Load id and game title mapping
+        with open(path.mapping, 'rb') as f: data.mapping = pickle.load(f)
+
+        #Load url info from file
+        with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
+    except OSError: logger.warning('Either `mapping` or `urlInfo` file not found. This can cause error in later operations.')
     
     #Load session. If no file found, create new session with the template
     newSession = {
@@ -56,9 +61,9 @@ def imgDownload_parse(data):
     with open(path.imageUrl, 'wb') as f:
         data.urlInfo = []
 
-        for p in listdir(path.imageResFolder):
+        for p in listdir(path.dataLake.imageResFolder):
             #Load search responses from file
-            data.responses = util.readJsls(path.imageResFolder + p)
+            data.responses = util.readJsls(path.dataLake.imageResFolder + p)
 
             #Parse responses for url info
             data.urlInfo.extend(ImgDownloader.Searcher.parseResponse_n(data.responses))
@@ -70,9 +75,6 @@ def imgDownload_parse(data):
 
 #--Download image
 def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
-    #Load url info from file
-    with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
-
     #Perform download
     session.currentDownloadId, newlyFailedUrl = ImgDownloader.Downloader.download8SaveBatch(data.urlInfo, startId=session.currentDownloadId, batchSize=batchSize, urlIdRange=urlIdRange)
 
@@ -82,15 +84,12 @@ def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
 
 #--Identify failed items from img result
 #Only use it when the session failed
-def imgDownload_identifyFailures(session, lastTargetId, urlIdRange=False):
-    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.identifyFailures(lastTargetId, urlIdRange)
+def imgDownload_identifyFailures(data, session, lastTargetId=11857, urlIdRange=False):
+    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.identifyFailures(data.urlInfo, lastTargetId, urlIdRange)
 
 
 #--Download failed image
 def imgDownload_reDownload(data, session):
-    #Load url info from file
-    with open(path.imageUrl, 'rb') as f: data.urlInfo = pickle.load(f)
-    
     #Perform redownload and update the failed list
     session.failedUrl = ImgDownloader.Downloader.download8SaveFailed(data.urlInfo, session.failedUrl)
 

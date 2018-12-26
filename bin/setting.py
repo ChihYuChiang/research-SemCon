@@ -17,6 +17,7 @@ path = util.SettingContainer(
     imageFolder    = 'data/img/',
     
     dataLake = util.SettingContainer(
+        imageResFolder = path_dataLake + 'Game Image/img-response/',
         imageFolder = path_dataLake + 'Game Image/img/'
     )
 )
