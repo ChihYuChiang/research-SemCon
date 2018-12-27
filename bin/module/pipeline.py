@@ -82,15 +82,17 @@ def imgDownload_download(data, session, batchSize=3, urlIdRange=False):
     session.failedUrl.extend(newlyFailedUrl)
 
 
-#--Identify failed items from img result
+#--Identify failed and corrupted items from img result
 #Only use it when the session failed
-def imgDownload_identifyFailures(data, session, lastTargetId=11857, urlIdRange=False):
-    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.identifyFailures(data.urlInfo, lastTargetId, urlIdRange)
+def imgDownload_identifyFailure8Corruption(data, session, lastTargetId=11857, urlIdRange=False):
+    session.corruptedUrl = ImgDownloader.Downloader.identifyCorruptions() #Examine the HHD as external is too slow
+    session.currentDownloadId, session.failedUrl = ImgDownloader.Downloader.identifyFailures(data.urlInfo, lastTargetId, urlIdRange) #Examine the external
 
 
-#--Download failed image
+#--Download failed and corrupted image
 def imgDownload_reDownload(data, session):
     #Perform redownload and update the failed list
+    session.corruptedUrl = ImgDownloader.Downloader.download8SaveFailed(data.urlInfo, session.corruptedUrl)
     session.failedUrl = ImgDownloader.Downloader.download8SaveFailed(data.urlInfo, session.failedUrl)
 
 

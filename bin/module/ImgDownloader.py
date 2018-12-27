@@ -1,13 +1,14 @@
 import requests
 import pandas as pd
+import cv2
 import pickle
 import traceback
 import re
 import math
+import os
 import concurrent.futures
 from pprint import pprint
 from bidict import bidict
-from os import walk
 
 import bin.module.util as util
 from bin.setting import path, imgDownloader as config
@@ -106,7 +107,6 @@ class Downloader():
     
     @classmethod
     def identifyFailures(cls, urlInfo, lastTargetId, urlIdRange):
-        #TODO: identify bad img file (can't read)
         #Target the external data lake
         #E.g. 48-56.jpg in folder, lastTargetId=48
         urlIdRange = urlIdRange or [0, 100]
@@ -119,7 +119,7 @@ class Downloader():
 
         curImgs = []
         curImgNames = [] #Retrieve the file names in the directory recursively
-        for (dirpath, dirnames, filenames) in walk(path.dataLake.imageFolder):
+        for (dirpath, dirnames, filenames) in os.walk(path.dataLake.imageFolder):
             curImgNames.extend(filenames)
         for name in curImgNames:
             match = re.match('(\d+)-(\d+)\.', name)
@@ -129,6 +129,24 @@ class Downloader():
 
         logger.info('Identified {} failed downloads.'.format(len(failedUrl)))
         return lastTargetId + 1, failedUrl
+    
+    def identifyCorruptions():
+        curImgPaths = [] #Retrieve the file paths in the directory recursively
+        for (dirpath, dirnames, filenames) in os.walk(path.dataLake.imageFolder):
+            curImgPaths.extend([(dirpath, filename) for filename in filenames])
+
+        def identify(dirpath, filename):
+            filepath = os.path.join(dirpath, filename)
+            if cv2.imread(filepath) is None: #When the file is proper, will return `None`
+                logger.debug('Corrupted {}'.format(filename))
+
+                match = re.match('(\d+)-(\d+)\.', filename)
+                return (int(match.group(1)), int(match.group(2)))
+
+        corruptedUrl = [identify(*p) for p in curImgPaths]
+        corruptedUrl = [p for p in corruptedUrl if p is not None]
+        logger.info('Examined {} items. Identified {} corrupted.'.format(len(curImgPaths), len(corruptedUrl)))
+        return corruptedUrl
 
     def download(targetId, url):
         try:
