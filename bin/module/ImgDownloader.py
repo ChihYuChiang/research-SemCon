@@ -132,7 +132,7 @@ class Downloader():
     
     def identifyCorruptions():
         curImgPaths = [] #Retrieve the file paths in the directory recursively
-        for (dirpath, dirnames, filenames) in os.walk(path.dataLake.imageFolder):
+        for (dirpath, dirnames, filenames) in os.walk(path.imageFolder):
             curImgPaths.extend([(dirpath, filename) for filename in filenames])
 
         def identify(dirpath, filename):

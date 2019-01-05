@@ -13,6 +13,7 @@ from bin.setting import path, textPreprocessor as config
 logger = util.initLogger(loggerName='TextPreprocessor')
 
 
+#TODO: pad sequence
 #--Tokenize a list (generator) of articles with sentence structure
 class Tokenizer():
 

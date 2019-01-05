@@ -11,8 +11,7 @@ data, session = pipeline.initialize(path.session)
 pipeline.imgDownload_search(data, session, batchSize=2)
 pipeline.imgDownload_parse(data)
 pipeline.imgDownload_download(data, session, batchSize=2)
-pipeline.imgDownload_identifyFailures(data, session)
-pipeline.imgDownload_identifyCorrupted(session)
+pipeline.imgDownload_identifyFailure8Corruption(data, session)
 pipeline.imgDownload_reDownload(data, session)
 '''
 

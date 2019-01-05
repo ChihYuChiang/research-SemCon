@@ -3,7 +3,7 @@ from os import listdir
 
 import bin.module.ImgDownloader as ImgDownloader
 # import bin.module.ImgPreprocessor as ImgPreprocessor
-# import bin.module.TextPreprocessor as TextPreprocessor
+import bin.module.TextPreprocessor as TextPreprocessor
 # import bin.module.TextSummarizer as TextSummarizer
 
 import bin.module.util as util
