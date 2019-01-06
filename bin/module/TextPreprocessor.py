@@ -13,22 +13,26 @@ from bin.setting import path, textPreprocessor as config
 logger = util.initLogger(loggerName='TextPreprocessor')
 
 
+
+
 #TODO: pad sequence
 #--Tokenize a list (generator) of articles with sentence structure
 class Tokenizer():
-
-    def __init__(self, articles=''):
-        self.result = articles
+    #2 articles with 2 sentences each
+    sampleAt = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge?', 'Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.']
     
-    def tokenize(self):
-        self.result = ((nltk.word_tokenize(st) for st in nltk.sent_tokenize(at)) for at in self.articles)
-        logger.info('Tokenized {} articles.'.format(len(self.result)))
+    @staticmethod
+    def tokenize(articles):
+        result = ((nltk.word_tokenize(st) for st in nltk.sent_tokenize(at)) for at in articles)
+        logger.info('Tokenized articles.')
+        return result
     
-    def brief(self, tokens=None):
+    @classmethod
+    def brief(cls, articles):
         """
-        Input: tokens with sentence structure. Default to `self.result`.
+        Input: tokens with sentence structure.
         """
-        if tokens is None: tokens = self.result
+        tokens = util.createListFromGen(cls.tokenize(articles))
 
         #Word frequency distribution by nltk
         fdist = FreqDist((tk for at in tokens for st in at for tk in st))
@@ -38,30 +42,29 @@ class Tokenizer():
         nWord = fdist.N()
 
         logger.info('About the corpus')
-        logger.info('- Number of articles:', nArticle)
-        logger.info('- Number of sentences:', nSentence)
-        logger.info('- Number of terms:', nWord)
-        logger.info('- Number of unique terms:', fdist.B())
-        logger.info('- Top terms:', sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
-        logger.info('- Terms per sentence:', nWord / nSentence)
-        logger.info('- Terms per article:', nWord / nArticle)
-        logger.info('- Sentences per article:', nSentence / nArticle)
+        logger.info('- Number of articles: ' + str(nArticle))
+        logger.info('- Number of sentences: ' + str(nSentence))
+        logger.info('- Number of terms: ' + str(nWord))
+        logger.info('- Number of unique terms: ' + str(fdist.B()))
+        logger.info('- Top terms:')
+        logger.info(sorted(fdist.items(), key=operator.itemgetter(1), reverse=True)[0:5])
+        logger.info('- Terms per sentence: ' + str(nWord / nSentence))
+        logger.info('- Terms per article: ' + str(nWord / nArticle))
+        logger.info('- Sentences per article: ' + str(nSentence / nArticle))
     
     @classmethod
     def test_tokenize(cls):
         """
         Print out sample articles and tokens with sentence structure
         """
-        #2 articles with 2 sentences each
-        articles = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge?', 'Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.']
-        print(articles)
-        print(util.createListFromGen(cls(articles).tokenize().result[1]))
+        print(cls.sampleAt)
+        print(util.createListFromGen(cls.tokenize(cls.sampleAt)))
     
     @classmethod
     def test_brief(cls):
-        tokens = [[['test', 'Is', 'gooD', '.'], ['gooD', 'world']], [['overhead', 'comes', 'from', 'gooD', 'speaking']]]
-        print(tokens)
-        cls().brief(tokens)
+        cls.brief(cls.sampleAt)
+
+
 
 
 #--Normalize a list of tokens, w/ or w/o sentence structure
@@ -115,6 +118,8 @@ class Normalizer():
         print(util.createListFromGen(cls(tokens).lower().filterStop().stem().getResult()))
 
 
+
+
 #--A df row generator
 class DfDispatcher():
     """
@@ -153,9 +158,12 @@ class DfDispatcher():
         return (row[colName] for i, row in self)
 
 
+
+
 #--Load experience keywords and embedding operations
 class EmbOperator():
     
+    @staticmethod
     def loadPretrainedEmb8Keywords(path):
         """
         Load pretrained emb at `path` and exp keywords
@@ -169,6 +177,7 @@ class EmbOperator():
 
         return (emb, keywords)
 
+    @staticmethod
     def getSentenceEmb(at, emb):
         """
         Average emb by sentence.
@@ -178,6 +187,7 @@ class EmbOperator():
         logger.info('Acquired sentence embedding of {} sentences.'.format(len(sentenceEmb)))
         return sentenceEmb
 
+    @staticmethod
     def getArticleEmb(at, emb):
         """
         Average emb by article.

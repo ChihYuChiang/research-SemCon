@@ -22,6 +22,7 @@ logger = util.initLogger(loggerName='ImgDownloader')
 class Mapper():
 
     #Process from source data
+    @staticmethod
     def generate():
         df = pd.read_csv(path.textDfCombined, usecols=['Game'], keep_default_na=False).drop_duplicates().reset_index(drop=True)
         mapping = bidict(df.to_dict()['Game'])
@@ -81,6 +82,7 @@ class Searcher():
                 logger.error('Unexpected error - {}:\n{}'.format(targetTerm, traceback.format_exc()))
                 return responses, targetId
     
+    @staticmethod
     def parseResponse_1(response):
         urls = []
         for i in range(len(response['value'])):
@@ -107,6 +109,7 @@ class Searcher():
 #--Download img
 class Downloader():
 
+    @staticmethod
     def download(targetId, url):
         try:
             response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
@@ -116,6 +119,7 @@ class Downloader():
             logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, traceback.format_exc()))
             return False
 
+    @staticmethod
     def save(response, targetId, urlId):
         try:
             fileName = '{}-{}.jpg'.format(targetId, urlId)
@@ -131,6 +135,7 @@ class Downloader():
             logger.error('Unexpected error - {} when saving {}:\n{}'.format(targetId, urlId, traceback.format_exc()))
             return False
 
+    @staticmethod
     def retrieveUrlEntry(urlInfo, targetId):
         #Find the entry of the target Id
         return next((entry for entry in urlInfo if entry[0] == targetId), None) #If not found, return None
@@ -193,6 +198,7 @@ class Downloader():
         logger.info('Identified {} failed downloads.'.format(len(failedUrl)))
         return lastTargetId + 1, failedUrl
     
+    @staticmethod
     def identifyCorruptions():
         curImgPaths = [] #Retrieve the file paths in the directory recursively
         for (dirpath, dirnames, filenames) in os.walk(path.imageFolder):

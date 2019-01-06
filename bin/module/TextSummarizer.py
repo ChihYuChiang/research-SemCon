@@ -21,6 +21,7 @@ from bin.setting import path
 dfDispatcher = TextPreprocessor.DfDispatcher(path.textIMDBDf)
 
 class IMDBReader():
+    @staticmethod
     def readAsDf():
         import pandas as pd
         import os
@@ -63,12 +64,11 @@ class IMDBReader():
 
 # IMDBReader.exportDf()
 
-TextPreprocessor.Tokenizer.test_tokenize()
-articles_tokenized = TextPreprocessor.Tokenizer(dfDispatcher.getCol('text')).tokenize()
+TextPreprocessor.Tokenizer.brief(dfDispatcher.getCol('text'))
+articles_tokenized = TextPreprocessor.Tokenizer.tokenize(dfDispatcher.getCol('text'))
 
+util.createListFromGen(articles_tokenized)
 
-test = list(articles_tokenized)
-Tokenizer.brief()
 
 normalizer = TextPreprocessor.Normalizer(articles_tokenized)
 articles_normalized = normalizer.lower().filterStop().filterNonWord().getResult()
