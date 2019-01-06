@@ -16,8 +16,10 @@ from bin.setting import path, imgDownloader as config
 logger = util.initLogger(loggerName='ImgDownloader')
 
 
+
+
 #--Prepare name-id 2-way mapping
-class Mapping():
+class Mapper():
 
     #Process from source data
     def generate():
@@ -36,6 +38,8 @@ class Mapping():
         print(mapping[1])
         print(mapping.inv['Expeditions: Viking'])
         print(len(mapping))
+
+
 
 
 #--Acquire img urls (Bing)
@@ -98,12 +102,71 @@ class Searcher():
         pprint(response)
 
 
+
+
 #--Download img
 class Downloader():
+
+    def download(targetId, url):
+        try:
+            response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
+            response.raise_for_status()
+            return response
+        except:
+            logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, traceback.format_exc()))
+            return False
+
+    def save(response, targetId, urlId):
+        try:
+            fileName = '{}-{}.jpg'.format(targetId, urlId)
+            folderPath = path.imageFolder + 'img-' + str(math.ceil((targetId + 1) / 1000) * 1000) + '/'
+            util.makeDirAvailable(folderPath)
+            filePath = '{}{}'.format(folderPath, fileName)
+            with open(filePath, 'wb') as f:
+                for chunk in response.iter_content(1024): #'1024 = chunk size
+                    f.write(chunk)
+            logger.debug('Downloaded {}.'.format(fileName))
+            return True
+        except:
+            logger.error('Unexpected error - {} when saving {}:\n{}'.format(targetId, urlId, traceback.format_exc()))
+            return False
 
     def retrieveUrlEntry(urlInfo, targetId):
         #Find the entry of the target Id
         return next((entry for entry in urlInfo if entry[0] == targetId), None) #If not found, return None
+    
+    @classmethod
+    def download8SaveBatch(cls, urlInfo, startId, batchSize, urlIdRange):
+        #urlIdRange = [0, 10] or False for all ids
+
+        failedItems = []
+        #Download certain range of urlId of a target
+        for targetId in range(startId, min(startId + batchSize, len(urlInfo) - 1)):
+            targetEntry = cls.retrieveUrlEntry(urlInfo, targetId)
+
+            #Make sure the id is found
+            try: assert targetEntry
+            except AssertionError:
+                errMsg = 'TargetId {} did not found in `urlInfo`.'.format(targetId[startId][0], startId)
+                logger.error('Assertion error - ' + errMsg)
+                raise AssertionError(errMsg)
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
+                #Adjust max_workers based on CPU number and hard disk writing speed
+                urlEntries = targetEntry[1][urlIdRange[0]:urlIdRange[1]] if urlIdRange else targetEntry[1]
+                futureEntryMap = {executor.submit(cls.download, targetId, url): (urlId, url) for urlId, url in urlEntries}
+
+                for future in concurrent.futures.as_completed(futureEntryMap):
+                    #Iterate a dict will iterate the keys by default (and faster than keys())
+                    response = future.result()
+                    urlId, url = futureEntryMap[future]
+                    if not response: failedItems.append((targetId, urlId)); continue
+
+                    saved = cls.save(response, targetId, urlId)
+                    if not saved: failedItems.append((targetId, urlId))
+        
+        logger.info('Finished downloads at target {} (included).\nAccumulated {} failed items.'.format(targetId, len(failedItems)))
+        return targetId + 1, failedItems
     
     @classmethod
     def identifyFailures(cls, urlInfo, lastTargetId, urlIdRange):
@@ -148,63 +211,6 @@ class Downloader():
         logger.info('Examined {} items. Identified {} corrupted.'.format(len(curImgPaths), len(corruptedUrl)))
         return corruptedUrl
 
-    def download(targetId, url):
-        try:
-            response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
-            response.raise_for_status()
-            return response
-        except:
-            logger.error('Unexpected error - {} at {}:\n{}'.format(targetId, url, traceback.format_exc()))
-            return False
-
-    def save(response, targetId, urlId):
-        try:
-            fileName = '{}-{}.jpg'.format(targetId, urlId)
-            folderPath = path.imageFolder + 'img-' + str(math.ceil((targetId + 1) / 1000) * 1000) + '/'
-            util.makeDirAvailable(folderPath)
-            filePath = '{}{}'.format(folderPath, fileName)
-            with open(filePath, 'wb') as f:
-                for chunk in response.iter_content(1024): #'1024 = chunk size
-                    f.write(chunk)
-            logger.debug('Downloaded {}.'.format(fileName))
-            return True
-        except:
-            logger.error('Unexpected error - {} when saving {}:\n{}'.format(targetId, urlId, traceback.format_exc()))
-            return False
-
-    @classmethod
-    def download8SaveBatch(cls, urlInfo, startId, batchSize, urlIdRange):
-        #urlIdRange = [0, 10] or False for all ids
-
-        failedItems = []
-        #Download certain range of urlId of a target
-        for targetId in range(startId, min(startId + batchSize, len(urlInfo) - 1)):
-            targetEntry = cls.retrieveUrlEntry(urlInfo, targetId)
-
-            #Make sure the id is found
-            try: assert targetEntry
-            except AssertionError:
-                errMsg = 'TargetId {} did not found in `urlInfo`.'.format(targetId[startId][0], startId)
-                logger.error('Assertion error - ' + errMsg)
-                raise AssertionError(errMsg)
-
-            with concurrent.futures.ThreadPoolExecutor(max_workers=16) as executor:
-                #Adjust max_workers based on CPU number and hard disk writing speed
-                urlEntries = targetEntry[1][urlIdRange[0]:urlIdRange[1]] if urlIdRange else targetEntry[1]
-                futureEntryMap = {executor.submit(cls.download, targetId, url): (urlId, url) for urlId, url in urlEntries}
-
-                for future in concurrent.futures.as_completed(futureEntryMap):
-                    #Iterate a dict will iterate the keys by default (and faster than keys())
-                    response = future.result()
-                    urlId, url = futureEntryMap[future]
-                    if not response: failedItems.append((targetId, urlId)); continue
-
-                    saved = cls.save(response, targetId, urlId)
-                    if not saved: failedItems.append((targetId, urlId))
-        
-        logger.info('Finished downloads at target {} (included).\nAccumulated {} failed items.'.format(targetId, len(failedItems)))
-        return targetId + 1, failedItems
-    
     @classmethod
     def download8SaveFailed(cls, urlInfo, failedItems):
         failedItems_updated = []
