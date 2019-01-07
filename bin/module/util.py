@@ -23,7 +23,7 @@ class ClsDecorator():
                 self.__dict__[key] = value
 
         cls.update = update
-        cls.__init__ = update        
+        cls.__init__ = update     
         return cls
 
 
@@ -55,19 +55,7 @@ class UniversalContainer():
     - Print object to see all key and data (recursive). Maximum print len for each item is 100.
     - getKeys() shows all attribute keys of this object (current level).
     - getMethods() shows all methods of this object.
-    - Pass a dict when initiate to create a nested UniversalContainer structure with default values. It stops at none-dict objs.
-    - Eg. var = UniversalContainer({'a': {'a_1': {}, 'a_2': 'foo'}, 'b': [1, 2]}).
-    - If want to keep dict structures, create and empty container and assign later.
     """
-
-    def __new__(cls, structure={}):
-        if isinstance(structure, dict):
-            return super().__new__(cls)
-        else: return structure
-        
-    def __init__(self, structure={}):
-        for key, item in structure.items():
-            self.__dict__[key] = type(self)(item)
 
     def __repr__(self, level=0):
         keys = [item for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
@@ -90,6 +78,23 @@ class UniversalContainer():
 
     def getMethods(self):
         return [item for item in dir(self) if callable(getattr(self, item)) and not item.startswith("__")]
+
+
+class DataContainer(UniversalContainer):
+    """
+    Usage
+    - Pass a dict when initiate to create a nested DataContainer structure with default values. It stops at none-dict objs.
+    - Eg. var = DataContainer({'a': {'a_1': {}, 'a_2': 'foo'}, 'b': [1, 2]}).
+    - If want to keep dict structures, create and empty container and assign later.
+    """    
+    def __new__(cls, structure={}):
+        if isinstance(structure, dict):
+            return super().__new__(cls)
+        else: return structure
+        
+    def __init__(self, structure={}):
+        for key, item in structure.items():
+            self.__dict__[key] = type(self)(item)
 
 
 @ClsDecorator.prohibitAttrSetter
