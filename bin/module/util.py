@@ -366,3 +366,20 @@ def makeDirAvailable(directory):
 
     if not os.path.exists(directory):
         os.makedirs(directory)
+
+
+def isExhausted(iterable, marker=True):
+    """
+    Examine if the iterable (eg. generator) is empty
+    - if empty (exhausted), return `marker` as `True` or raise `StopIteration`.
+    - if not empty, returns the iterable.
+    """
+    import itertools
+
+    try:
+        firstItem = next(iterable)
+    except StopIteration:
+        if marker: return marker
+        else: raise
+
+    return itertools.chain([firstItem], iterable)
