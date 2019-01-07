@@ -371,7 +371,7 @@ def makeDirAvailable(directory):
 def isExhausted(iterable, marker=True):
     """
     Examine if the iterable (eg. generator) is empty
-    - if empty (exhausted), return `marker` as `True` or raise `StopIteration`.
+    - if empty (exhausted), return `marker` or raise `StopIteration`.
     - if not empty, returns the iterable.
     """
     import itertools
