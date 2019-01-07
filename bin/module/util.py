@@ -1,6 +1,7 @@
 #--Decorators for classes
 class ClsDecorator():
 
+    @staticmethod
     def prohibitAttrSetter(cls):
         """
         Prohibit access to attribute setter
@@ -9,9 +10,10 @@ class ClsDecorator():
             class ProhibittedOperation(Exception): pass
             raise ProhibittedOperation('Not allowed to modify attributes directly.')
 
-        cls.__setattr__ =  setattr
+        cls.__setattr__ = setattr
         return cls
     
+    @staticmethod
     def grantKeywordUpdate(cls):
         """
         Grant attribute modification by `update` method
@@ -28,6 +30,7 @@ class ClsDecorator():
 #--Decorators for functions
 class FuncDecorator():
     
+    @staticmethod
     def delayOperation(time):
         """
         Delay operation by `time` secs
@@ -52,7 +55,19 @@ class UniversalContainer():
     - Print object to see all key and data (recursive). Maximum print len for each item is 100.
     - getKeys() shows all attribute keys of this object (current level).
     - getMethods() shows all methods of this object.
+    - Pass a dict when initiate to create a nested UniversalContainer structure with default values. It stops at none-dict objs.
+    - Eg. var = UniversalContainer({'a': {'a_1': {}, 'a_2': 'foo'}, 'b': [1, 2]}).
+    - If want to keep dict structures, create and empty container and assign later.
     """
+
+    def __new__(cls, structure={}):
+        if isinstance(structure, dict):
+            return super().__new__(cls)
+        else: return structure
+        
+    def __init__(self, structure={}):
+        for key, item in structure.items():
+            self.__dict__[key] = type(self)(item)
 
     def __repr__(self, level=0):
         keys = [item for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
@@ -84,8 +99,15 @@ class SettingContainer(UniversalContainer):
     Usage
     - Convenient keyword = parameter setting.
     - Protected attribute setter. Use `update(key=value)` to modify content.
+    - Compatible with `**self` expression
     """
-    pass
+
+    #The keys and __getitem__ make the obj pass as a mapping obj -> can be used with ** expression
+    def keys(self):
+        return self.__dict__.keys()
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
    
 
 class ConvertedContainer(SettingContainer):
@@ -98,7 +120,7 @@ class ConvertedContainer(SettingContainer):
         from collections import Iterable
 
         if isinstance(data, dict):
-            return super().__new__(cls)
+            return super().__new__(cls) #Pass 'class instance' upward for inheritance
         elif isinstance(data, Iterable) and not isinstance(data, str):
             return type(data)(cls(value) for value in data)
         else:

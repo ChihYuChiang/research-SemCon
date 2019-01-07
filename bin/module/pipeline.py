@@ -66,7 +66,7 @@ def imgDownload_parse(data):
             data.responses = util.readJsls(path.dataLake.imageResFolder + p)
 
             #Parse responses for url info
-            data.urlInfo.extend(ImgDownloader.Searcher.parseResponse_n(data.responses))
+            data.urlInfo.extend(ImgDownloader.Searcher.parseResponseBatch(data.responses))
 
         #Save url info to file
         pickle.dump(data.urlInfo, f)

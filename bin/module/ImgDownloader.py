@@ -19,7 +19,7 @@ logger = util.initLogger(loggerName='ImgDownloader')
 
 
 #--Prepare name-id 2-way mapping
-class Mapper():
+class Mapping():
 
     #Process from source data
     @staticmethod
@@ -83,17 +83,17 @@ class Searcher():
                 return responses, targetId
     
     @staticmethod
-    def parseResponse_1(response):
+    def parseResponse(response):
         urls = []
         for i in range(len(response['value'])):
             urls.append((i, response['value'][i]['contentUrl']))
         return response['targetId'], urls
     
     @classmethod
-    def parseResponse_n(cls, responses):
+    def parseResponseBatch(cls, responses):
         urlInfo = []
         for response in responses:
-            urlInfo.append(cls.parseResponse_1(response))
+            urlInfo.append(cls.parseResponse(response))
         logger.info('Parsed {} response items.'.format(len(urlInfo)))
         return urlInfo
     
