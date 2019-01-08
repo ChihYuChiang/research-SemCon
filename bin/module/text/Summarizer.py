@@ -70,41 +70,20 @@ with open(path.textFolder + 'IMDB_tokenized.pkl', 'wb') as f:
 normalizer = TextPreprocessor.Normalizer(articles_tokenized)
 articles_normalized = normalizer.lower().filterStop().filterNonWord().getNormalized()
 
+nSample = 0
 id_train, id_test = util.data.SetDivider.divideSets([0.8, 0.2], nSample)
 data = util.general.DataContainer({
     'train': {
-        'x': (df[id] for id in id_train),
-        'y': (df[id] for id in id_train)
+        'x': [df[id] for id in id_train],
+        'y': [df[id] for id in id_train]
     },
     'test': {
-        'x': (df[id] for id in id_test),
-        'y': (df[id] for id in id_test)
-    }
-})
-util.general.DataContainer({
-    'train': {
-        'x': (df[id] for id in id_train),
-        'y': (df[id] for id in id_train)
-    },
-    'test': {
-        'x': (df[id] for id in id_test),
-        'y': (df[id] for id in id_test)
+        'x': [df[id] for id in id_test],
+        'y': [df[id] for id in id_test]
     }
 })
 
 
-def genDataSequential(targetIds, X, Y):
-    from typing import Generator
-    if not isinstance(X, Generator):
-        X = iter(X)
-        Y = iter(Y)
-    count = max(targetIds) - min(targetIds) + 1
-            
-    return [(X.next(), Y.next()) for i in count]
-
-def genDataNonSequential(targetIds, data):
-    for key in data.keys() 
-    return [(X[i], Y[i]) for i in targetIds]
 
 
 class Model_Sentiment():

@@ -104,7 +104,7 @@ class KerasDataDispatcher(Sequence):
     '''
     Prepare data for Keras models with data generated on the go
     - If `shuffle == True`, `idPool` will be shuffled for each epoch. Meaning, the order of the samples go through the network will be different.
-    - If `genData` uses generators, `idPool` has to be sequential--`shuffle` has to be `False`.
+    - If `genData` data sources are generators, `idPool` has to be sequential--`shuffle` has to be `False`.
     '''
     import numpy as np
 
@@ -125,3 +125,22 @@ class KerasDataDispatcher(Sequence):
     
     def on_epoch_end(self):
         if self.shuffle: np.random.shuffle(self.idPool)
+
+
+class BatchDispatcher():
+    '''
+    - Functions return a batch of samples based on `targetId` and datasets.
+    - Used as the `genData` in `KerasDataDispatcher`.
+    '''
+    from typing import Generator
+
+    def dispatchSeq(targetIds, X, Y):
+        if not isinstance(X, Generator):
+            X = iter(X)
+            Y = iter(Y)
+        count = max(targetIds) - min(targetIds) + 1
+            
+        return [(X.next(), Y.next()) for i in count]
+
+    def dispatchNonSeq(targetIds, X, Y):
+        return [(X[i], Y[i]) for i in targetIds]
