@@ -13,7 +13,7 @@ from bidict import bidict
 import bin.module.util as util
 from bin.setting import path, imgDownloader as config
 
-logger = util.initLogger(loggerName='ImgDownloader')
+logger = util.general.initLogger(loggerName='ImgDownloader')
 
 
 
@@ -53,7 +53,7 @@ class Searcher():
     searchUrl = config.searcherUrl
 
     @classmethod
-    @util.FuncDecorator.delayOperation(1)
+    @util.general.FuncDecorator.delayOperation(1)
     def search(cls, targetTerm):
         cls.params['q'] = targetTerm
         response = requests.get(cls.searchUrl, headers=cls.headers, params=cls.params)
@@ -112,7 +112,7 @@ class Downloader():
     @staticmethod
     def download(targetId, url):
         try:
-            response = requests.get(url, stream=True, timeout=5, headers=util.createCustomHeader()) #Time out to stop waiting for a response
+            response = requests.get(url, stream=True, timeout=5, headers=util.general.createCustomHeader()) #Time out to stop waiting for a response
             response.raise_for_status()
             return response
         except:
@@ -124,7 +124,7 @@ class Downloader():
         try:
             fileName = '{}-{}.jpg'.format(targetId, urlId)
             folderPath = path.imageFolder + 'img-' + str(math.ceil((targetId + 1) / 1000) * 1000) + '/'
-            util.makeDirAvailable(folderPath)
+            util.general.makeDirAvailable(folderPath)
             filePath = '{}{}'.format(folderPath, fileName)
             with open(filePath, 'wb') as f:
                 for chunk in response.iter_content(1024): #'1024 = chunk size

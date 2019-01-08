@@ -1,34 +1,24 @@
-'''
-Train a recurrent convolutional network on the IMDB sentiment
-classification task.
-Gets to 0.8498 test accuracy after 2 epochs. 41s/epoch on K520 GPU.
-
-Note:
-batchSize is highly sensitive.
-Only 2 epochs are needed as the dataset is very small.
-'''
-import bin.module.TextPreprocessor as TextPreprocessor
-import bin.module.util as util
-from bin.setting import path, textSummarizer as config
+import pandas as pd
+import os
+import re
 
 from keras.preprocessing import sequence
-from keras.utils import Sequence
 from keras.models import Model
 from keras.layers import Input, Dense, Dropout
 from keras.layers import Embedding, LSTM
 from keras.layers import Conv1D, MaxPooling1D
 
-# emb, _ = TextPreprocessor.EmbOperator.loadPretrainedEmb8Keywords(path.gNewsW2V)
-dfDispatcher = TextPreprocessor.DfDispatcher(path.textIMDBDf)
+import bin.module.text.Preprocessor as TextPreprocessor
+import bin.module.util as util
+from bin.setting import path, textSummarizer as config
+
+
+
 
 class IMDBReader():
 
     @staticmethod
     def readAsDf():
-        import pandas as pd
-        import os
-        import re
-
         dic = {}
         urlFiles = {}
         for (dirpath, dirnames, filenames) in os.walk(path.textIMDBFolder, topdown=True):
@@ -64,8 +54,13 @@ class IMDBReader():
     def exportDf(cls):
         cls.readAsDf().to_csv(path.textIMDBDf)
 
+
+
+
+#--Data
 # IMDBReader.exportDf()
 # df = pd.read_csv(path.textIMDBDf)
+# emb, _ = TextPreprocessor.EmbOperator.loadPretrainedEmb8Keywords(path.gNewsW2V)
 
 tokenizer = TextPreprocessor.Tokenizer(dfDispatcher.getCol('text'))
 articles_tokenized = tokenizer.tokenize()
@@ -75,15 +70,18 @@ with open(path.textFolder + 'IMDB_tokenized.pkl', 'wb') as f:
 normalizer = TextPreprocessor.Normalizer(articles_tokenized)
 articles_normalized = normalizer.lower().filterStop().filterNonWord().getNormalized()
 
-
-#--Data
-test = SetDivider([0.1, 0.85, 0.05])
-test.divideSets()
-test.idSet(9)
-
-id_train, id_test = util.divideSets([0.8, 0.2], nSample)
-
-data = util.DataContainer({
+id_train, id_test = util.data.SetDivider.divideSets([0.8, 0.2], nSample)
+data = util.general.DataContainer({
+    'train': {
+        'x': (df[id] for id in id_train),
+        'y': (df[id] for id in id_train)
+    },
+    'test': {
+        'x': (df[id] for id in id_test),
+        'y': (df[id] for id in id_test)
+    }
+})
+util.general.DataContainer({
     'train': {
         'x': (df[id] for id in id_train),
         'y': (df[id] for id in id_train)
@@ -95,22 +93,18 @@ data = util.DataContainer({
 })
 
 
-class DataDispatcher(Sequence):
+def genDataSequential(targetIds, X, Y):
+    from typing import Generator
+    if not isinstance(X, Generator):
+        X = iter(X)
+        Y = iter(Y)
+    count = max(targetIds) - min(targetIds) + 1
+            
+    return [(X.next(), Y.next()) for i in count]
 
-    def __init__(self, idPool, batchSize, genData):
-        self.idPool = idPool
-        self.batchSize = batchSize
-        self.genData = genData
-
-    def __len__(self):
-        return int(np.ceil(len(self.idPool) / float(self.batchSize)))
-
-    def __getitem__(self, idx):
-        targetIds = self.idPool[idx * self.batchSize:(idx + 1) * self.batchSize]
-        return self.genData(targetIds)
-
-def genData(): pass
-len(DataDispatcher([1,2,3], [1,2,3], 2, 'test'))
+def genDataNonSequential(targetIds, data):
+    for key in data.keys() 
+    return [(X[i], Y[i]) for i in targetIds]
 
 
 class Model_Sentiment():

@@ -1,21 +1,21 @@
 import pickle
 from os import listdir
 
-import bin.module.ImgDownloader as ImgDownloader
-# import bin.module.ImgPreprocessor as ImgPreprocessor
-import bin.module.TextPreprocessor as TextPreprocessor
-# import bin.module.TextSummarizer as TextSummarizer
+import bin.module.img.Downloader as ImgDownloader
+# import bin.module.img.Preprocessor as ImgPreprocessor
+import bin.module.text.Preprocessor as TextPreprocessor
+# import bin.module.text.Summarizer as TextSummarizer
 
 import bin.module.util as util
 from bin.setting import path
 
-logger = util.initLogger(loggerName='pipeline')
+logger = util.general.initLogger(loggerName='pipeline')
 
 
 #--Initialization
 #Provide the attributes to be overwritten in an obj
 def initialize(sessionPath, overwrite=False):
-    data = util.UniversalContainer()
+    data = util.general.UniversalContainer()
 
     try:
         #Load id and game title mapping
@@ -30,7 +30,7 @@ def initialize(sessionPath, overwrite=False):
         'currentDownloadId': 0,
         'currentSearchId': 0
     }
-    session = util.Session.load(sessionPath, **newSession)
+    session = util.general.Session.load(sessionPath, **newSession)
     
     return data, session
 
@@ -53,7 +53,7 @@ def imgDownload_search(data, session, batchSize=10):
     data.responses, session.currentSearchId = ImgDownloader.Searcher.searchBatch(data.mapping, startId=session.currentSearchId, batchSize=batchSize)
 
     #Save search responses to multiple files
-    util.writeJsls(data.responses, '{}{}.jsl'.format(path.imageResFolder, session.currentSearchId))
+    util.general.writeJsls(data.responses, '{}{}.jsl'.format(path.imageResFolder, session.currentSearchId))
 
 
 #--Parse and consolidate response
@@ -63,7 +63,7 @@ def imgDownload_parse(data):
 
         for p in listdir(path.dataLake.imageResFolder):
             #Load search responses from file
-            data.responses = util.readJsls(path.dataLake.imageResFolder + p)
+            data.responses = util.general.readJsls(path.dataLake.imageResFolder + p)
 
             #Parse responses for url info
             data.urlInfo.extend(ImgDownloader.Searcher.parseResponseBatch(data.responses))

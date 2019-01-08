@@ -11,7 +11,7 @@ from nltk.probability import FreqDist
 import bin.module.util as util
 from bin.setting import path, textPreprocessor as config
 
-logger = util.initLogger(loggerName='TextPreprocessor')
+logger = util.general.initLogger(loggerName='TextPreprocessor')
 
 
 
@@ -28,7 +28,7 @@ class Tokenizer():
         self.tokenized = []
     
     def tokenizeGen(self): #Generator only
-        assert util.isExhausted(self.articles), 'Articles are exhausted. Please re-initialize.'
+        assert util.general.isExhausted(self.articles), 'Articles are exhausted. Please re-initialize.'
 
         tokenGen = ((nltk.word_tokenize(st) for st in nltk.sent_tokenize(at)) for at in self.articles)
         logger.info('Create token generator.')
@@ -36,9 +36,9 @@ class Tokenizer():
     
     def tokenize(self): #Really produce the tokens
         if not self.tokenized:
-            assert util.isExhausted(self.articles), 'Articles are exhausted. Please re-initialize.'
+            assert util.general.isExhausted(self.articles), 'Articles are exhausted. Please re-initialize.'
 
-            self.tokenized = util.createListFromGen(self.tokenizeGen())
+            self.tokenized = util.general.createListFromGen(self.tokenizeGen())
             logger.info('Tokenized articles.')
         return self.tokenized
 
@@ -95,7 +95,7 @@ class Normalizer():
         return self.gen
 
     def getNormalized(self):
-        normalized = util.createListFromGen(self.gen)
+        normalized = util.general.createListFromGen(self.gen)
         logger.info('Normalized articles.')
         return normalized
     
@@ -135,46 +135,6 @@ class Normalizer():
         tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']]]
         print(tokens)
         print(cls(tokens).lower().filterStop().stem().getNormalized())
-
-
-
-
-#--A df row generator
-class DfDispatcher():
-    """
-    Read in by chunk (save disk access times) but yield by row
-    - `chunkSize` = how many rows to read per access.
-    - Dispatch between `startRow` and `endRow` (inclusive).
-    - Return (rowId, rowContent) for each row.
-    """
-
-    def __init__(self, filePath, startRow=0, endRow=None, chunkSize=1000):
-        #"cp1252", "ISO-8859-1", "utf-8"
-        self.readCsvParam = {
-            'filepath_or_buffer': filePath,
-            'encoding': 'cp1252',
-            'chunksize': chunkSize,
-            'nrows': 1 + endRow if endRow else None
-        }
-        self.startRow = startRow
-        self.dfIter = self.__iter__()
-
-        logger.info('Initiated df dispatcher of \"{}\" from row {} to row {}.'.format(filePath, startRow, endRow or 'file ends'))
-
-    def __iter__(self):
-        dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.iterrows())
-        i = 0
-        #TODO: try use send() instead
-        while i < self.startRow:
-            i += 1
-            next(dfIter)
-        return dfIter
-
-    def __next__(self):
-        return next(self.dfIter)
-    
-    def getCol(self, colName):
-        return (row[colName] for i, row in self)
 
 
 

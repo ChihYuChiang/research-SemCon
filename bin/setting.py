@@ -3,9 +3,9 @@ import nltk
 import bin.module.util as util
 
 
-cred = util.getConfigObj('ref/credential.yml')
+cred = util.general.getConfigObj('ref/credential.yml')
 path_dataLake = 'E:/Repository/Data/' #External data storage
-path = util.SettingContainer(
+path = util.general.SettingContainer(
     session        = 'data/session.pkl',
     mapping        = 'data/name-id-mapping.pkl',
     textFolder     = 'data/text/',
@@ -19,13 +19,13 @@ path = util.SettingContainer(
     imageResFolder = 'data/img-response/',
     imageFolder    = 'data/img/',
     
-    dataLake = util.SettingContainer(
+    dataLake = util.general.SettingContainer(
         imageResFolder = path_dataLake + 'Game Image/img-response/',
         imageFolder = path_dataLake + 'Game Image/img/'
     )
 )
 
-imgDownloader = util.SettingContainer(
+imgDownloader = util.general.SettingContainer(
     searcherUrl = cred.BingImageSearch.url,
     searcherHeaders = {
         'Ocp-Apim-Subscription-Key': cred.BingImageSearch.key
@@ -41,7 +41,7 @@ imgDownloader = util.SettingContainer(
     }
 )
 
-textPreprocessor = util.SettingContainer(
+textPreprocessor = util.general.SettingContainer(
     stopwords    = nltk.corpus.stopwords.words('english'),
     stemmer      = nltk.stem.snowball.SnowballStemmer('english').stem,
     lemmatizer   = nltk.stem.WordNetLemmatizer().lemmatize,
@@ -49,8 +49,8 @@ textPreprocessor = util.SettingContainer(
     words2Keep   = []
 )
 
-textSummarizer = util.SettingContainer(
-    modelSentimentParams = util.SettingContainer(
+textSummarizer = util.general.SettingContainer(
+    modelSentimentParams = util.general.SettingContainer(
         #Data
         vocabSize = 0,
         config_padSequence = {
