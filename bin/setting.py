@@ -8,6 +8,7 @@ path_dataLake = 'E:/Repository/Data/' #External data storage
 path = util.SettingContainer(
     session        = 'data/session.pkl',
     mapping        = 'data/name-id-mapping.pkl',
+    textFolder     = 'data/text/',
     textDf         = 'data/text/df_cb_main.csv',          #Include only GameSpot
     textDfCombined = 'data/text/df_cb_main_combined.csv', #Include all  3 sites
     textIMDBFolder = 'data/text/aclImdb/',
@@ -46,4 +47,32 @@ textPreprocessor = util.SettingContainer(
     lemmatizer   = nltk.stem.WordNetLemmatizer().lemmatize,
     words2Filter = [],
     words2Keep   = []
+)
+
+textSummarizer = util.SettingContainer(
+    modelSentimentParams = util.SettingContainer(
+        #Data
+        vocabSize = 0,
+        config_padSequence = {
+            'maxlen': 200, #Use only the first 200 words
+            'padding': 'post',
+            'truncating': 'post'
+        },
+
+        #Model
+        embWeightInit = '',
+        dropoutRate = 0.25,
+        poolSize = 4,
+        config_conv1D = {
+            'filters': 64,
+            'kernel_size': 5
+        },
+        config_LSTM = {
+            'units': 64
+        },
+
+        #Training
+        batchSize = 32,
+        epochs = 1
+    )
 )
