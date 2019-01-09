@@ -1,4 +1,6 @@
-import nltk
+import nltk.corpus
+from nltk.stem.snowball import SnowballStemmer
+from nltk.stem import WordNetLemmatizer
 
 import bin.module.util as util
 
@@ -9,11 +11,12 @@ path = util.general.SettingContainer(
     session        = 'data/session.pkl',
     mapping        = 'data/name-id-mapping.pkl',
     textFolder     = 'data/text/',
+    textTkFolder   = 'data/text/tokenized/',
     textDf         = 'data/text/df_cb_main.csv',          #Include only GameSpot
     textDfCombined = 'data/text/df_cb_main_combined.csv', #Include all  3 sites
     textIMDBFolder = 'data/text/aclImdb/',
     textIMDBDf     = 'data/text/df_imdb.csv',
-    gNewsW2V       = 'data/text/GoogleNews-vectors-negative300.bin.gz',
+    gNewsW2V       = 'data/text/emb/GoogleNews-vectors-negative300.bin.gz',
     expKeyword     = 'data/text/keywords.csv',
     imageUrl       = 'data/image-url.pkl',
     imageResFolder = 'data/img-response/',
@@ -43,9 +46,9 @@ imgDownloader = util.general.SettingContainer(
 
 textPreprocessor = util.general.SettingContainer(
     stopwords    = nltk.corpus.stopwords.words('english'),
-    stemmer      = nltk.stem.snowball.SnowballStemmer('english').stem,
-    lemmatizer   = nltk.stem.WordNetLemmatizer().lemmatize,
-    words2Filter = [],
+    stemmer      = SnowballStemmer('english').stem,
+    lemmatizer   = WordNetLemmatizer().lemmatize,
+    words2Filter = ['br'],
     words2Keep   = []
 )
 
