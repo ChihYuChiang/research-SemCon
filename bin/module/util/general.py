@@ -86,7 +86,8 @@ class DataContainer(UniversalContainer):
     - Pass a dict when initiate to create a nested DataContainer structure with default values. It stops at none-dict objs.
     - Eg. var = DataContainer({'a': {'a_1': {}, 'a_2': 'foo'}, 'b': [1, 2]}).
     - If want to keep dict structures, create and empty container and assign later.
-    """    
+    """
+    
     def __new__(cls, structure={}):
         if isinstance(structure, dict):
             return super().__new__(cls)

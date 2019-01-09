@@ -7,10 +7,10 @@ class SetDivider():
     - If sample size is not provided, return base sample size and ids represent the proportion. Use % to find the remainders for assigning sets.
     - Use `idSet` to identify the set identity of a sample index.
     """
-    import numpy as np
-    import re
 
     def __init__(self, proportion, nSample=None, seed=1):
+        import numpy as np
+
         assert sum(proportion) == 1, '`proportion` must sum to 1.'
         self.proportion = proportion
         self.nSample = nSample
@@ -20,6 +20,8 @@ class SetDivider():
         np.random.seed(seed=seed)
 
     def _nSampleW(self):
+        import numpy as np
+
         #Number of indice for each set
         nIds = np.around(np.array(self.proportion) * self.nSample)
 
@@ -29,18 +31,20 @@ class SetDivider():
         rIndiceGen = (i for i in rIndiceGen)
 
         #Assign indice to each set
-        ids = []
+        ids = tuple()
         for nId in nIds:
             id = []
             while nId > 0:
                 try: id.append(next(rIndiceGen))
                 except StopIteration: break
                 nId -= 1
-            ids.append(id)
+            ids += (id,)
 
         return ids
 
     def _nSampleWO(self):
+        import re
+        
         #Max number of float digits
         digits = max(map(lambda x: len(re.search('\.(\d+)', str(x)).group(1)), self.proportion))
 
@@ -67,14 +71,13 @@ class DfDispatcher():
     - `chunkSize` = how many rows to read per access.
     - Dispatch between `startRow` and `endRow` (inclusive).
     - Return (rowId, rowContent) for each row.
+    - Useful encodings: "cp1252", "ISO-8859-1", "utf-8".
     """
-    import pandas as pd
 
-    def __init__(self, filePath, startRow=0, endRow=None, chunkSize=1000):
-        #"cp1252", "ISO-8859-1", "utf-8"
+    def __init__(self, filePath, startRow=0, endRow=None, encoding="utf-8", chunkSize=1000):
         self.readCsvParam = {
             'filepath_or_buffer': filePath,
-            'encoding': 'cp1252',
+            'encoding': encoding,
             'chunksize': chunkSize,
             'nrows': 1 + endRow if endRow else None
         }
@@ -84,6 +87,8 @@ class DfDispatcher():
         print('Initiated df dispatcher of \"{}\" from row {} to row {}.'.format(filePath, startRow, endRow or 'file ends'))
 
     def __iter__(self):
+        import pandas as pd
+
         dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.iterrows())
         i = 0
         #TODO: try use send() instead
@@ -96,7 +101,10 @@ class DfDispatcher():
         return next(self.dfIter)
     
     def getCol(self, colName):
-        return (row[colName] for i, row in self)
+        col = (row[colName] for i, row in self)
+        self.dfIter = self.__iter__() #Reinitialize the generator
+
+        return col 
 
 
 from keras.utils import Sequence
@@ -106,7 +114,6 @@ class KerasDataDispatcher(Sequence):
     - If `shuffle == True`, `idPool` will be shuffled for each epoch. Meaning, the order of the samples go through the network will be different.
     - If `genData` data sources are generators, `idPool` has to be sequential--`shuffle` has to be `False`.
     '''
-    import numpy as np
 
     def __init__(self, sampleSize, batchSize, genData, shuffle=False):
         self.idPool = list(range(sampleSize))
@@ -117,6 +124,8 @@ class KerasDataDispatcher(Sequence):
         self.on_epoch_end()
 
     def __len__(self):
+        import numpy as np
+
         return int(np.ceil(len(self.idPool) / float(self.batchSize)))
 
     def __getitem__(self, idx):
@@ -124,6 +133,8 @@ class KerasDataDispatcher(Sequence):
         return self.genData(targetIds)
     
     def on_epoch_end(self):
+        import numpy as np
+
         if self.shuffle: np.random.shuffle(self.idPool)
 
 
@@ -132,9 +143,10 @@ class BatchDispatcher():
     - Functions return a batch of samples based on `targetId` and datasets.
     - Used as the `genData` in `KerasDataDispatcher`.
     '''
-    from typing import Generator
 
     def dispatchSeq(targetIds, X, Y):
+        from typing import Generator
+
         if not isinstance(X, Generator):
             X = iter(X)
             Y = iter(Y)
