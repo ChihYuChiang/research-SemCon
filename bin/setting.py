@@ -12,6 +12,7 @@ path = util.general.SettingContainer(
     mapping        = 'data/name-id-mapping.pkl',
     textFolder     = 'data/text/',
     textTkFolder   = 'data/text/tokenized/',
+    textDictFolder = 'data/text/dictionary/',
     textDf         = 'data/text/df_cb_main.csv',          #Include only GameSpot
     textDfCombined = 'data/text/df_cb_main_combined.csv', #Include all  3 sites
     textIMDBFolder = 'data/text/aclImdb/',
@@ -21,6 +22,7 @@ path = util.general.SettingContainer(
     imageUrl       = 'data/image-url.pkl',
     imageResFolder = 'data/img-response/',
     imageFolder    = 'data/img/',
+    modelFolder    = 'model/',
     
     dataLake = util.general.SettingContainer(
         imageResFolder = path_dataLake + 'Game Image/img-response/',
@@ -74,8 +76,10 @@ textSummarizer = util.general.SettingContainer(
             'units': 64
         },
 
+        #Compile
+        loss='logcosh', optimizer='adam', metrics=['logcosh'],
+
         #Training
-        batchSize = 32,
-        epochs = 1
+        batchSize = 32, epochs = 1
     )
 )

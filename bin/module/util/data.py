@@ -156,3 +156,60 @@ class BatchDispatcher():
 
     def dispatchNonSeq(targetIds, X, Y):
         return [(X[i], Y[i]) for i in targetIds]
+
+
+from abc import ABC, abstractmethod
+class KerasModel(ABC):
+
+    def __init__(self):
+        import bin.module.util as util
+        
+        self.model = object()
+        self.params = util.general.SettingContainer(
+            batchSize = 32,
+            epochs = 1
+            config_compile = {}
+        )
+
+    @abstractmethod
+    def preprocess(self): pass
+    
+    @abstractmethod
+    def compile(self, inputs, outputs):
+        self.model = Model(inputs=inputs, outputs=outputs)
+        self.model.compile(**self.params.config_compile) #TODO: customize the metric
+        self.model.summary()
+    
+    @abstractmethod
+    def train(self, x_train, y_train):
+        trainingHistory = self.model.fit(x_train, y_train, batchSize=self.params.batchSize, epochs=self.params.epochs)
+        return trainingHistory
+
+    @abstractmethod
+    def evaluate(self, x_test, y_test):
+        metrics = self.model.evaluate(x_test, y_test, batchSize=self.params.batchSize)
+        return metrics
+
+    @abstractmethod    
+    def predict(self, x_new):
+        prediction = self.model.predict(x_new, batchSize=self.params.batchSize)
+        return prediction
+
+    def save(self, path):
+        import pickle
+
+        config = self.model.get_config()
+        weights = self.model.get_weights()
+
+        with open(path, 'wb') as f:
+            pickle.dump((config, weights), f)
+    
+    def load(self, path):
+        import pickle
+        from keras.models import Model
+
+        with open(path, 'rb') as f:
+            config, weights = pickle.load(f)
+
+        self.model = Model.from_config(config)
+        self.model.set_weights(weights)

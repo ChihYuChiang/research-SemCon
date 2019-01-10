@@ -59,26 +59,27 @@ class IMDBReader():
 
 
 
-class Model_Sentiment():
+class Model_Sentiment(util.data.KerasModel):
 
-    def __init__(self, data, model=object()):
+    def __init__(self, data):
+        super().__init__(data)
         self.data = data
-
         try:
             self.data.train.x, self.data.train.y
             self.data.test.x, self.data.test.y
+            self.data.new.x
         except AttributeError as e:
             raise AttributeError('Data object must conform to the predefined structure. Refer to the class definition.') from e
             
-        self.model = model
         self.params = config.modelSentimentParams #Default
 
     def preprocess(self):
         #Pad sequence
-        self.data.train.x = sequence.pad_sequences(self.data.train.x, **self.params.config_padSequence)
-        self.data.test.x = sequence.pad_sequences(self.data.test.x, **self.params.config_padSequence)
+        for x in [self.data.train.x, self.data.test.x, self.data.new.x]:
+            x = sequence.pad_sequences(x, **self.params.config_padSequence)
         print('x_train shape:', self.data.train.x.shape)
         print('x_test shape:', self.data.test.x.shape)
+        print('x_new shape:', self.data.new.x.shape)
 
     def compile(self):
         EmbWPresetWeight = Embedding(input_dim=self.params.vocabSize, output_dim=300)
@@ -92,33 +93,23 @@ class Model_Sentiment():
         _ = MaxPooling1D(self.params.poolSize)(_)
         _ = LSTM(**self.params.config_LSTM)(_)
         outputs = Dense(1, activation='linear')(_)
-
-        self.model = Model(inputs=inputs, outputs=outputs)
-        self.model.compile(loss='logcosh', optimizer='adam', metrics=['logcosh']) #TODO: customize the metric
-        self.model.summary()
+        super().compile(inputs, outputs)
 
     def train(self):
-        self.model.fit(self.data.train.x, self.data.train.y, batchSize=self.params.batchSize, epochs=self.params.epochs)
+        super().train(self.data.train.x, self.data.train.y)
+        print('Trained with {} epochs'.format())
 
     def evaluate(self):
-        score, acc = self.model.evaluate(self.data.test.x, self.data.test.y, batchSize=self.params.batchSize)
+        score, acc = super(self.data.test.x, self.data.test.y).evaluate()
+        print('Evaluate')
         print('Test score:', score)
         print('Test accuracy:', acc)
-    
-    def predict(self, newX):
-        prediction = self.model.predict(newX, batchSize=self.params.batchSize)
+
+    def predict(self):
+        prediction = super(self.data.new.x).predict()
         print('Prediction')
-        print('input:', newX)
+        print('input:', x_new)
         print('output:', prediction)
-
-    def save(self):
-        model.get_config()
-        model = Model.from_config(config)
-
-        model.get_weights()
-        model.set_weights(weights)
-
-
 
 
 import bin.module.text.Preprocessor as TextPreprocessor
@@ -129,8 +120,8 @@ df = pd.read_csv(path.textIMDBDf)
 # ats_tokenized = tokenizer.tokenize()
 # with open(path.textTkFolder + 'tokenized_imdb.pkl', 'wb') as f:
 #     pickle.dump(ats_tokenized, f)
-with open(path.textTkFolder + 'tokenized_imdb.pkl', 'rb') as f:
-    ats_tokenized = pickle.load(f)
+# with open(path.textTkFolder + 'tokenized_imdb.pkl', 'rb') as f:
+#     ats_tokenized = pickle.load(f)
 
 # normalizer = TextPreprocessor.Normalizer(ats_tokenized)
 # ats_normalized = normalizer.lower().filterStop().filterNonWord().filter().getNormalized()
@@ -150,11 +141,26 @@ data = util.general.DataContainer({
     'test': {
         'x': [ats_normalized[id] for id in id_test],
         'y': [df.iloc[id].rating for id in id_test]
-    }
+    },
+    'new' : {'x': []}
 })
-emb = TextPreprocessor.EmbOperation.loadPretrainedEmb(path.gNewsW2V)
+
+# emb = TextPreprocessor.EmbOperation.loadPretrainedEmb(path.gNewsW2V)
+
+
+# test = Mapping(tokens)
+# test.makeDict()
+# test.dict.save(textDictFolder + 'test.pkl')
+
+# test = Mapping()
+# test.dict = test.dict.load(textDictFolder + 'test.pkl')
+
+# test.dict.id2token
+# test.dict.token2id
+
 
 model = Model_Sentiment(data)
+model.data.train.x
 model.params.embWeightInit = ''
 model.preprocess()
 model.compile()
