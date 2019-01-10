@@ -1,10 +1,10 @@
 import os
-import pickle
 import operator
 import pandas as pd
 import numpy as np
-from typing import List
+from zlib import adler32
 from gensim.models import KeyedVectors
+from gensim.corpora import Dictionary, HashDictionary
 from nltk.probability import FreqDist
 from nltk import word_tokenize, sent_tokenize
 
@@ -19,9 +19,6 @@ logger = util.general.initLogger(loggerName='TextPreprocessor')
 #TODO: pad sequence
 #--Tokenize a list (generator) of articles with sentence structure
 class Tokenizer():
-
-    #2 articles with 2 sentences each
-    sampleAt = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge?', 'Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.', ' ']
 
     def __init__(self, articles):
         self.articles = articles
@@ -46,8 +43,10 @@ class Tokenizer():
         """
         Print out sample articles and tokens with sentence structure
         """
-        print(cls.sampleAt)
-        print(cls(cls.sampleAt).tokenize())
+        #2 articles with 2 sentences each + an empty article
+        sampleAt = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge?', 'Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.', ' ']
+        print(sampleAt)
+        print(cls(sampleAt).tokenize())
 
 
 
@@ -104,35 +103,35 @@ class Normalizer():
         """
         Test chained lower(), filterStop(), stem()
         """
-        tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']]]
+        tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']], []]
         print(tokens)
         print(cls(tokens).lower().filterStop().stem().getNormalized())
 
 
 
 
-class BOW():
+class Mapping():
 
-    def makeDict(self):
-        pass
+    _idRange = 2000000
+    test_tokens = [[['test', 'is', 'good', '.'], ['good', 'test'], ['hello', 'test']], [['overhead', 'comes', 'good', 'is', 'speaking']], []]
     
-    def makeHashDict(self):
-        pass
+    def __init__(self, tokens=[], idRange=_idRange):
+        self.tokens = tokens
+        self.idRange = idRange
+        self.dict = Dictionary()
 
-    def export(self):
-        pass
+    def makeDict(self, bidirectional=True):
+        self.dict = Dictionary((util.general.flattenList(at) for at in self.tokens), prune_at=self.idRange)
+        if bidirectional:
+            #The `id2token` property is lazily computed. Use the `get` to force producing the revered dict
+            self.dict.get(0)
     
     def brief(self):
-        """
-        Input: tokens with sentence structure.
-        """
-        self.tokenize()
-
         #Word frequency distribution by nltk
-        fdist = FreqDist((tk for at in self.tokenized for st in at for tk in st))
+        fdist = FreqDist((tk for at in self.tokens for st in at for tk in st))
 
-        nArticle = len(self.tokenized)
-        nSentence = sum(map(lambda article: len(article), self.tokenized))
+        nArticle = len(self.tokens)
+        nSentence = sum(map(lambda article: len(article), self.tokens))
         nWord = fdist.N()
 
         logger.info('About the corpus:')
@@ -145,10 +144,38 @@ class BOW():
         logger.info('- Terms per sentence: ' + str(nWord / nSentence))
         logger.info('- Terms per article: ' + str(nWord / nArticle))
         logger.info('- Sentences per article: ' + str(nSentence / nArticle))
+    
+    def getBOW(self, article):
+        '''
+        Transform an article into BOW format.
+        '''
+        return self.dict.doc2bow(util.general.flattenList(article))
+    
+    @staticmethod
+    def hash(token, idRange=_idRange):
+        '''
+        For hashing trick
+        - Use `hash` or `md5` if the dictionary is very large.
+        - Note that `hash` is unstable across different runs.
+        - Sample code:
+            # hash('test')
+            # from hashlib import md5
+            # int(md5(b'test').hexdigest(), 16)
+        '''
+        return adler32(bytes(token, 'utf-8')) % idRange
+    
+    @classmethod
+    def test_makeDict(cls):
+        mapping = cls(tokens)
+        mapping.makeDict()
+        print(tokens)
+        print(mapping.dict.id2token)
+        print(mapping.dict.token2id)
 
     @classmethod
     def test_brief(cls):
-        cls(cls.sampleAt).brief()
+        print(tokens)
+        cls(tokens).brief()
 
 
 
