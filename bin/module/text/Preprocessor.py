@@ -190,8 +190,8 @@ class EmbOperation():
         """
         keyWords = pd.read_csv(path.expKeyword, encoding='utf-8', header=None)[0].tolist()
         keyWords = [word.lower() for word in keyWords]
-        logger.info('Load exp keywords of', len(keyWords), 'words.')
 
+        logger.info('Load exp keywords of', len(keyWords), 'words.')
         return keywords
     
     @staticmethod
@@ -200,10 +200,29 @@ class EmbOperation():
         Load pretrained emb.
         """
         emb = KeyedVectors.load_word2vec_format(path, binary=True)
-        logger.info('Loaded pretrained embedding with' + str(len(emb.index2word)) + 'words.')
 
+        logger.info('Loaded pretrained embedding with {} terms.'.format(str(len(emb.index2word))))
         return emb
+    
+    @staticmethod
+    def sliceEmb(vocabulary, emb):
+        """
+        - Take only part of a big emb, leaving out terms not in the target corpus.
+        - If the term is not included in the emb, use zero vector instead.
+        - Return: np 2d array with the same order of vocabulary.
+        """
+        embMatrix = []
+        for term in vocabulary:
+            try:
+                embMatrix.append(emb[term])
+            except KeyError:
+                embMatrix.append(np.zeros(emb.vector_size))
+                continue
+        embMatrix = np.array(embMatrix)
 
+        logger.info('Acquired embedding matrix of {} terms.'.format(str(len(vocabulary))))
+        return embMatrix
+        
     @staticmethod
     def getSentenceEmb(at, emb):
         """
@@ -211,6 +230,7 @@ class EmbOperation():
         - Return: [sent=array(300,)]
         """
         sentenceEmb = [np.array([emb[tk] for tk in st]).mean(axis=0) for st in at]
+
         logger.info('Acquired sentence embedding of {} sentences.'.format(str(len(sentenceEmb))))
         return sentenceEmb
 
@@ -221,5 +241,6 @@ class EmbOperation():
         - Return: array(300,)
         """
         articleEmb = np.array([emb[tk] for st in at for tk in st]).mean(axis=0)
+
         logger.info('Acquired article embedding of {} articles.'.format(len(articleEmb)))
         return articleEmb
