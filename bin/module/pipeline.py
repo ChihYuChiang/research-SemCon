@@ -4,7 +4,7 @@ from os import listdir
 import bin.module.img.Downloader as ImgDownloader
 # import bin.module.img.Preprocessor as ImgPreprocessor
 import bin.module.text.Preprocessor as TextPreprocessor
-# import bin.module.text.Summarizer as TextSummarizer
+import bin.module.text.Summarizer as TextSummarizer
 
 import bin.module.util as util
 from bin.setting import path

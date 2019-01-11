@@ -13,6 +13,7 @@ path = util.general.SettingContainer(
     textFolder     = 'data/text/',
     textTkFolder   = 'data/text/tokenized/',
     textDictFolder = 'data/text/dictionary/',
+    textEmbFolder  = 'data/text/emb/',
     textDf         = 'data/text/df_cb_main.csv',          #Include only GameSpot
     textDfCombined = 'data/text/df_cb_main_combined.csv', #Include all  3 sites
     textIMDBFolder = 'data/text/aclImdb/',
@@ -58,6 +59,7 @@ textSummarizer = util.general.SettingContainer(
     modelSentimentParams = util.general.SettingContainer(
         #Data
         vocabSize = 0,
+        batchSize = 32,
         config_padSequence = {
             'maxlen': 200, #Use only the first 200 words
             'padding': 'post',
@@ -65,7 +67,8 @@ textSummarizer = util.general.SettingContainer(
         },
 
         #Model
-        embWeightInit = '',
+        embWeightInit = None,
+        embSize = 300,
         dropoutRate = 0.25,
         poolSize = 4,
         config_conv1D = {
@@ -77,9 +80,16 @@ textSummarizer = util.general.SettingContainer(
         },
 
         #Compile
-        loss='logcosh', optimizer='adam', metrics=['logcosh'],
+        config_compile = {
+            'loss': 'logcosh',
+            'optimizer': 'adam',
+            'metrics': ['logcosh']
+        },
 
         #Training
-        batchSize = 32, epochs = 1
+        config_training = {
+            'epochs': 1,
+            'shuffle': True #After each epoch
+        }
     )
 )

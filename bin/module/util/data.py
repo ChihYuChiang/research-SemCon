@@ -115,11 +115,10 @@ class KerasDataDispatcher(Sequence):
     - If `genData` data sources are generators, `idPool` has to be sequential--`shuffle` has to be `False`.
     '''
 
-    def __init__(self, sampleSize, batchSize, genData, shuffle=False):
+    def __init__(self, sampleSize, batchSize, genData):
         self.idPool = list(range(sampleSize))
         self.batchSize = batchSize
         self.genData = genData
-        self.shuffle = shuffle
 
         self.on_epoch_end()
 
@@ -132,10 +131,7 @@ class KerasDataDispatcher(Sequence):
         targetIds = self.idPool[idx * self.batchSize:(idx + 1) * self.batchSize]
         return self.genData(targetIds)
     
-    def on_epoch_end(self):
-        import numpy as np
-
-        if self.shuffle: np.random.shuffle(self.idPool)
+    def on_epoch_end(self): pass
 
 
 class BatchDispatcher():
@@ -167,32 +163,31 @@ class KerasModel(ABC):
         self.model = object()
         self.params = util.general.SettingContainer(
             batchSize = 32,
-            epochs = 1
+            epochs = 1,
             config_compile = {}
         )
-
-    @abstractmethod
-    def preprocess(self): pass
     
     @abstractmethod
     def compile(self, inputs, outputs):
+        from keras.models import Model
+
         self.model = Model(inputs=inputs, outputs=outputs)
         self.model.compile(**self.params.config_compile) #TODO: customize the metric
         self.model.summary()
     
     @abstractmethod
     def train(self, x_train, y_train):
-        trainingHistory = self.model.fit(x_train, y_train, batchSize=self.params.batchSize, epochs=self.params.epochs)
+        trainingHistory = self.model.fit(x_train, y_train, batch_size=self.params.batchSize, **self.params.config_training)
         return trainingHistory
 
     @abstractmethod
     def evaluate(self, x_test, y_test):
-        metrics = self.model.evaluate(x_test, y_test, batchSize=self.params.batchSize)
+        metrics = self.model.evaluate(x_test, y_test, batch_size=self.params.batchSize)
         return metrics
 
     @abstractmethod    
     def predict(self, x_new):
-        prediction = self.model.predict(x_new, batchSize=self.params.batchSize)
+        prediction = self.model.predict(x_new, batch_size=self.params.batchSize)
         return prediction
 
     def save(self, path):

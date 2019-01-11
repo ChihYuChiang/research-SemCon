@@ -1,9 +1,9 @@
 import pandas as pd
+import numpy as np
 import os
 import re
 
 from keras.preprocessing import sequence
-from keras.models import Model
 from keras.layers import Input, Dense, Dropout
 from keras.layers import Embedding, LSTM
 from keras.layers import Conv1D, MaxPooling1D
@@ -48,13 +48,13 @@ class IMDBReader():
         df = pd.DataFrame.from_dict(dic, orient='index')
         df.columns = ['title', 'rating', 'text', 'positive', 'group_orig']
 
-        print('Read in {} reviews.'.format(df.shape[0]))
+        logger.info('Read in {} reviews.'.format(df.shape[0]))
         return df
     
     @classmethod
     def exportDf(cls):
         cls.readAsDf().to_csv(path.textIMDBDf, encoding='utf-8')
-        print('Export the df at {}.'.format(path.textIMDBDf))
+        logger.info('Export the df at {}.'.format(path.textIMDBDf))
 
 
 
@@ -62,7 +62,6 @@ class IMDBReader():
 class Model_Sentiment(util.data.KerasModel):
 
     def __init__(self, data):
-        super().__init__(data)
         self.data = data
         try:
             self.data.train.x, self.data.train.y
@@ -73,18 +72,31 @@ class Model_Sentiment(util.data.KerasModel):
             
         self.params = config.modelSentimentParams #Default
 
-    def preprocess(self):
+    @staticmethod
+    def preprocess_x(x, mapping):
+        #Text to index and remove sentence structure
+        x = [list(util.general.flattenList([[mapping.dict.token2id[term] for term in st] for st in at])) for at in x]
+
         #Pad sequence
-        for x in [self.data.train.x, self.data.test.x, self.data.new.x]:
-            x = sequence.pad_sequences(x, **self.params.config_padSequence)
-        print('x_train shape:', self.data.train.x.shape)
-        print('x_test shape:', self.data.test.x.shape)
-        print('x_new shape:', self.data.new.x.shape)
+        x = sequence.pad_sequences(np.array(x), **config.modelSentimentParams.config_padSequence)
+
+        logger.info('x shape: {}'.format(x.shape))
+        return x
+
+    @staticmethod
+    def preprocess_y(y):
+        y = np.array(y)
+
+        logger.info('y shape: {}'.format(y.shape))
+        return y
 
     def compile(self):
-        EmbWPresetWeight = Embedding(input_dim=self.params.vocabSize, output_dim=300)
-        if self.params.embWeightInit:
-            EmbWPresetWeight.set_weights(self.params.embWeightInit)
+        weights = self.params.embWeightInit if self.params.embWeightInit is not None else np.zeros([self.params.vocabSize, self.params.embSize])
+        EmbWPresetWeight = Embedding(
+            input_dim=self.params.vocabSize, output_dim=self.params.embSize,
+            input_length=self.params.config_padSequence['maxlen'],
+            weights=[weights], trainable=True
+        )
 
         inputs = Input(shape=(self.params.config_padSequence['maxlen'], ), dtype='int32')
         _ = EmbWPresetWeight(inputs)
@@ -97,19 +109,19 @@ class Model_Sentiment(util.data.KerasModel):
 
     def train(self):
         super().train(self.data.train.x, self.data.train.y)
-        print('Trained with {} epochs'.format())
+        logger.info('Trained with {} epochs'.format(self.params.config_training['epoch']))
 
     def evaluate(self):
-        score, acc = super(self.data.test.x, self.data.test.y).evaluate()
-        print('Evaluate')
-        print('Test score:', score)
-        print('Test accuracy:', acc)
+        score, acc = super().evaluate(self.data.test.x, self.data.test.y)
+        logger.info('Evaluate')
+        logger.info('Test score: {}'.format(score))
+        logger.info('Test accuracy: {}'.format(acc))
 
     def predict(self):
-        prediction = super(self.data.new.x).predict()
-        print('Prediction')
-        print('input:', x_new)
-        print('output:', prediction)
+        prediction = super().predict(self.data.new.x)
+        logger.info('Prediction')
+        logger.info('input: {}'.format(x_new))
+        logger.info('output: {}'.format(prediction))
 
 
 import bin.module.text.Preprocessor as TextPreprocessor
@@ -130,40 +142,39 @@ df = pd.read_csv(path.textIMDBDf)
 with open(path.textTkFolder + 'normalized_imdb.pkl', 'rb') as f:
     ats_normalized = pickle.load(f)
 
+# mapping = TextPreprocessor.Mapping(ats_normalized)
+# mapping.brief()
+# mapping.makeDict()
+# mapping.dict.save(path.textDictFolder + 'mapping_imdb.pkl')
+mapping = TextPreprocessor.Mapping()
+mapping.dict = mapping.dict.load(path.textDictFolder + 'mapping_imdb.pkl')
+sortedVocab = [mapping.dict.id2token[i] for i in range(max(mapping.dict.keys()) + 1)]
+
+# emb = TextPreprocessor.EmbOperation.loadPretrainedEmb(path.gNewsW2V)
+# embMatrix = TextPreprocessor.EmbOperation.sliceEmb(sortedVocab, emb)
+# with open(path.textEmbFolder + 'emb_imdb_raw.pkl', 'wb') as f:
+#     pickle.dump(embMatrix, f)
+with open(path.textEmbFolder + 'emb_imdb_raw.pkl', 'rb') as f:
+    embMatrix = pickle.load(f)
+
 nSample = len(ats_normalized)
 (id_train, id_test), _ = util.data.SetDivider(proportion=[0.8, 0.2], nSample=nSample).divideSets()
 
 data = util.general.DataContainer({
     'train': {
-        'x': [ats_normalized[id] for id in id_train],
-        'y': [df.iloc[id].rating for id in id_train]
+        'x': Model_Sentiment.preprocess_x([ats_normalized[id] for id in id_train], mapping),
+        'y': Model_Sentiment.preprocess_y([df.iloc[id].rating for id in id_train])
     },
     'test': {
-        'x': [ats_normalized[id] for id in id_test],
-        'y': [df.iloc[id].rating for id in id_test]
+        'x': Model_Sentiment.preprocess_x([ats_normalized[id] for id in id_test], mapping),
+        'y': Model_Sentiment.preprocess_y([df.iloc[id].rating for id in id_test])
     },
     'new' : {'x': []}
 })
 
-# emb = TextPreprocessor.EmbOperation.loadPretrainedEmb(path.gNewsW2V)
-
-
-# test = Mapping(tokens)
-# test.makeDict()
-# test.dict.save(textDictFolder + 'test.pkl')
-
-# test = Mapping()
-# test.dict = test.dict.load(textDictFolder + 'test.pkl')
-
-# test.dict.id2token
-# test.dict.token2id
-
-
 model = Model_Sentiment(data)
-model.data.train.x
-model.params.embWeightInit = ''
-model.preprocess()
+model.params.update(vocabSize=len(embMatrix), embWeightInit=embMatrix)
+
 model.compile()
 model.train()
 model.evaluate()
-model.predict("")
