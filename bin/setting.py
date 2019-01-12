@@ -83,7 +83,7 @@ textSummarizer = util.general.SettingContainer(
         config_compile = {
             'loss': 'logcosh',
             'optimizer': 'adam',
-            'metrics': ['logcosh']
+            'metrics': ['mean_absolute_error']
         },
 
         #Training

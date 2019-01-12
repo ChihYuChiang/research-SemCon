@@ -22,7 +22,6 @@ class Tokenizer():
 
     def __init__(self, articles):
         self.articles = articles
-        self.tokenized = []
     
     def tokenizeGen(self): #Generator only
         self.articles = util.general.isExhausted(iter(self.articles))
@@ -33,10 +32,9 @@ class Tokenizer():
         return tokenGen
     
     def tokenize(self): #Really produce the tokens
-        if not self.tokenized:
-            self.tokenized = util.general.createListFromGen(self.tokenizeGen())
-            logger.info('Tokenized articles.')
-        return self.tokenized
+        tokenized = util.general.createListFromGen(self.tokenizeGen())
+        logger.info('Tokenized articles.')
+        return tokenized
     
     @classmethod
     def test_tokenize(cls):

@@ -156,16 +156,21 @@ class BatchDispatcher():
 
 from abc import ABC, abstractmethod
 class KerasModel(ABC):
+    """
+    Abstract class for implementing Keras model.
+    - Handle `model`, `params`, and common operations.
+    """
 
-    def __init__(self):
+    def __init__(self, params):
         import bin.module.util as util
         
         self.model = object()
         self.params = util.general.SettingContainer(
             batchSize = 32,
-            epochs = 1,
-            config_compile = {}
+            config_compile = {}, config_training = {},
+            config_evaluate = {}, config_predict = {}
         )
+        self.params.update(**params)
     
     @abstractmethod
     def compile(self, inputs, outputs):
@@ -182,29 +187,34 @@ class KerasModel(ABC):
 
     @abstractmethod
     def evaluate(self, x_test, y_test):
-        metrics = self.model.evaluate(x_test, y_test, batch_size=self.params.batchSize)
+        metrics = self.model.evaluate(x_test, y_test, batch_size=self.params.batchSize, **self.params.config_evaluate)
         return metrics
 
     @abstractmethod    
     def predict(self, x_new):
-        prediction = self.model.predict(x_new, batch_size=self.params.batchSize)
+        prediction = self.model.predict(x_new,
+            batch_size=self.params.batchSize, **self.params.config_predict)
         return prediction
 
-    def save(self, path):
+    def save(self, path, **other):
         import pickle
 
         config = self.model.get_config()
         weights = self.model.get_weights()
 
         with open(path, 'wb') as f:
-            pickle.dump((config, weights), f)
+            pickle.dump((config, weights, self.params, {**other}), f)
     
     def load(self, path):
         import pickle
         from keras.models import Model
 
         with open(path, 'rb') as f:
-            config, weights = pickle.load(f)
+            config, weights, self.params, other = pickle.load(f)
+
+        for key, value in other.items():
+            self.__dict__[key] = value
 
         self.model = Model.from_config(config)
         self.model.set_weights(weights)
+        self.model.summary()
