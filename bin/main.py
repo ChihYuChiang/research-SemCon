@@ -3,7 +3,7 @@ from bin.setting import path
 
 
 #--Initialize session and data storage
-data, session = pipeline.initialize(path.session)
+data, model, session = pipeline.initialize(path.session)
 
 
 #--Operations
@@ -13,11 +13,16 @@ pipeline.imgDownload_parse(data)
 pipeline.imgDownload_download(data, session, batchSize=2)
 pipeline.imgDownload_identifyFailure8Corruption(data, session)
 pipeline.imgDownload_reDownload(data, session)
+
+pipeline.textPreprocess_initSentiment(data)
+pipeline.textSummarize_initSentiment(data, model)
+pipeline.textSummarize_trainSentiment(data, model, epochs=1)
+pipeline.textSummarize_predictSentiment(text, model)
 '''
 
 
 #--Observe session outcome
-pipeline.observeOutcome(data, session)
+pipeline.observeOutcome(data, model, session)
 
 
 #--End session

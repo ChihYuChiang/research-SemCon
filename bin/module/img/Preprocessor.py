@@ -5,6 +5,13 @@ import matplotlib.pyplot as plt
 import bin.module.util as util
 from bin.setting import path
 
+#Cropping to be square
+#Scaling to 100px by 100px
+#Img selection: separate gameplay, logo?
+#Mean, standard deviation of input pixel
+#Normalizing
+#Augmentation: Perturbation, rotation
+#Detect anomaly image (not from the same game) 
 
 "test"
 #OpenCV follows BGR while Matplotlib RGB

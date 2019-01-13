@@ -61,9 +61,9 @@ class IMDBReader():
 
 class Model_Sentiment(util.data.KerasModel):
 
-    def __init__(self, params={}, mapping=object()):
+    def __init__(self, mapping=object()):
         #`model` and `params` objects are created and handled in the inherited class
-        super().__init__(params)
+        super().__init__(config.modelSentimentParams)
         self.mapping = mapping
 
     @staticmethod
