@@ -28,7 +28,7 @@ class Tokenizer():
         assert self.articles , 'Articles are exhausted. Please re-initialize.'
 
         tokenGen = ((word_tokenize(st) for st in sent_tokenize(at)) for at in self.articles)
-        logger.info('Create token generator.')
+        logger.info('Created token generator.')
         return tokenGen
     
     def tokenize(self): #Really produce the tokens
@@ -123,6 +123,7 @@ class Mapping():
         if bidirectional:
             #The `id2token` property is lazily computed. Use the `get` to force producing the revered dict
             self.dict.get(0)
+        logger.info('Created token dictionary.')
     
     def brief(self):
         #Word frequency distribution by nltk

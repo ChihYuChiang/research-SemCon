@@ -66,9 +66,25 @@ class Model_Sentiment(util.data.KerasModel):
         super().__init__(params)
         self.mapping = mapping
 
+    @staticmethod
+    def preprocess_text(ats, save=('', False)):
+        """
+        `ats` = a list of articles (string).
+        """
+        ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
+        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
+
+        if save[1]:
+            with open('{}tokenized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_tokenized, f)
+            with open('{}normalized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_normalized, f)
+            logger.info('Saved tokenized and normalized {} text at {}.'.format(save[0], path.textTkFolder))            
+        
+        return ats_normalized
+
     def preprocess_x(self, x):
         #Text to index and remove sentence structure
-        x = [list(util.general.flattenList([[self.mapping.token2id[term] for term in st] for st in at])) for at in x]
+        #Use `get` return `None` when KeyError -> skipping terms not in dict
+        x = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in x]
 
         #Pad sequence
         x = sequence.pad_sequences(np.array(x), **config.modelSentimentParams.config_padSequence)
@@ -97,12 +113,14 @@ class Model_Sentiment(util.data.KerasModel):
         _ = MaxPooling1D(self.params.poolSize)(_)
         _ = LSTM(**self.params.config_LSTM)(_)
         outputs = Dense(1, activation='linear')(_)
+
         super().compile(inputs, outputs)
+        logger.info('Model compiled successfully.')
 
     def train(self, x_train, y_train):
         super().train(self.preprocess_x(x_train), self.preprocess_y(y_train))
         logger.info('-' * 60)
-        logger.info('Trained with {} epochs'.format(self.params.config_training['epochs']))
+        logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
     def evaluate(self, x_test, y_test):
         loss, mae = super().evaluate(self.preprocess_x(x_test), self.preprocess_y(y_test))
@@ -117,66 +135,3 @@ class Model_Sentiment(util.data.KerasModel):
         logger.info('Prediction')
         logger.info('input: {}'.format(x_new))
         logger.info('output: {}'.format(prediction))
-
-
-import bin.module.text.Preprocessor as TextPreprocessor
-import pickle
-
-df = pd.read_csv(path.textIMDBDf)
-# ats_tokenized = TextPreprocessor.Tokenizer(util.data.DfDispatcher(path.textIMDBDf).getCol('text')).tokenize()
-# with open(path.textTkFolder + 'tokenized_imdb.pkl', 'wb') as f:
-#     pickle.dump(ats_tokenized, f)
-# with open(path.textTkFolder + 'tokenized_imdb.pkl', 'rb') as f:
-#     ats_tokenized = pickle.load(f)
-
-# ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
-# with open(path.textTkFolder + 'normalized_imdb.pkl', 'wb') as f:
-#     pickle.dump(ats_normalized, f)
-with open(path.textTkFolder + 'normalized_imdb.pkl', 'rb') as f:
-    ats_normalized = pickle.load(f)
-
-# mapper = TextPreprocessor.Mapping(ats_normalized)
-# mapper.brief()
-# mapper.makeDict()
-# mapper.dict.save(path.textDictFolder + 'mapping_imdb.pkl')
-mapping = TextPreprocessor.Mapping().dict.load(path.textDictFolder + 'mapping_imdb.pkl')
-sortedVocab = [mapping.id2token[i] for i in range(max(mapping.keys()) + 1)]
-
-# emb = TextPreprocessor.EmbOperation.loadPretrainedEmb(path.gNewsW2V)
-# embMatrix = TextPreprocessor.EmbOperation.sliceEmb(sortedVocab, emb)
-# with open(path.textEmbFolder + 'emb_imdb_raw.pkl', 'wb') as f:
-#     pickle.dump(embMatrix, f)
-with open(path.textEmbFolder + 'emb_imdb_raw.pkl', 'rb') as f:
-    embMatrix = pickle.load(f)
-
-nSample = len(ats_normalized)
-(id_train, id_test), _ = util.data.SetDivider(proportion=[0.8, 0.2], nSample=nSample).divideSets()
-
-data = util.general.DataContainer({
-    'train': {
-        'x': [ats_normalized[id] for id in id_train],
-        'y': [df.iloc[id].rating for id in id_train]
-    },
-    'test': {
-        'x': [ats_normalized[id] for id in id_test],
-        'y': [df.iloc[id].rating for id in id_test]
-    }
-})
-
-model = Model_Sentiment(params=config.modelSentimentParams, mapping=mapping)
-model.params.update(vocabSize=len(embMatrix), embWeightInit=embMatrix)
-
-model.compile()
-model.train(data.train.x, data.train.y)
-model.evaluate(data.test.x, data.test.y)
-model.save(path.modelFolder + 'model_sentiment.pkl', mapping=mapping)
-
-model = Model_Sentiment()
-model.load(path.modelFolder + 'model_sentiment.pkl')
-
-model.predict(data.new.x)
-
-
-['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge?', 'Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.', ' ']
-new_tokenized = TextPreprocessor.Tokenizer(x).tokenize()
-new_normalized = TextPreprocessor.Normalizer(new_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
