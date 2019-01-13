@@ -3,7 +3,6 @@ import pandas as pd
 from os import listdir
 
 import bin.module.img.Downloader as ImgDownloader
-# import bin.module.img.Preprocessor as ImgPreprocessor
 import bin.module.text.Preprocessor as TextPreprocessor
 import bin.module.text.Summarizer as TextSummarizer
 
@@ -131,8 +130,7 @@ def textPreprocess_initSentiment(data, load=True):
             pickle.dump(data.embMatrix, f)
 
     #Input datasets
-    data.nSample = len(data.ats_normalized)
-    (data.id_train, data.id_test), _ = util.data.SetDivider(proportion=[0.8, 0.2], nSample=data.nSample).divideSets()
+    (data.id_train, data.id_test), _ = util.data.SetDivider(proportion=[0.8, 0.2], nSample=len(data.ats_normalized)).divideSets()
     
     data.datasets = util.general.DataContainer({
         'train': {

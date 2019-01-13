@@ -9,6 +9,7 @@ from keras.layers import Embedding, LSTM
 from keras.layers import Conv1D, MaxPooling1D
 
 import bin.module.util as util
+import bin.module.text.Preprocessor as TextPreprocessor
 from bin.setting import path, textSummarizer as config
 
 logger = util.general.initLogger(loggerName='TextSummarizer')

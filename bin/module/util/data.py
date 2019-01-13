@@ -217,4 +217,5 @@ class KerasModel(ABC):
 
         self.model = Model.from_config(config)
         self.model.set_weights(weights)
+        self.model.compile(**self.params.config_compile)
         self.model.summary()
