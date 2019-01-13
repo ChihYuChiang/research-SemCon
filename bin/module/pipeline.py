@@ -1,4 +1,5 @@
 import pickle
+import pandas as pd
 from os import listdir
 
 import bin.module.img.Downloader as ImgDownloader
@@ -29,7 +30,8 @@ def initialize(sessionPath, overwrite=False):
     #Load session. If no file found, create new session with the template
     newSession = {
         'currentDownloadId': 0,
-        'currentSearchId': 0
+        'currentSearchId': 0,
+        'modelSentimentEpoch': 0
     }
     session = util.general.Session.load(sessionPath, **newSession)
     
@@ -143,8 +145,10 @@ def textPreprocess_initSentiment(data, load=True):
         }
     })
 
+    logger.info('Processed data for sentiment model.')
 
-def textSummarize_initSentiment(data, model, load=True):
+
+def textSummarize_initSentiment(data, model, session, load=True):
     if load:
         model.sentiment = TextSummarizer.Model_Sentiment()
         model.sentiment.load(path.modelFolder + 'model_sentiment.pkl')
@@ -166,6 +170,7 @@ def textSummarize_trainSentiment(data, model, session, epochs=1):
 
     #Track the number of epochs trained
     session.modelSentimentEpoch += epochs
+    logger.info('The sentiment model has been trained with {} epochs.'.format(session.modelSentimentEpoch))
 
 
 def textSummarize_predictSentiment(text, model):

@@ -115,7 +115,7 @@ class Model_Sentiment(util.data.KerasModel):
         outputs = Dense(1, activation='linear')(_)
 
         super().compile(inputs, outputs)
-        logger.info('Model compiled successfully.')
+        logger.info('Compiled sentiment model successfully.')
 
     def train(self, x_train, y_train):
         super().train(self.preprocess_x(x_train), self.preprocess_y(y_train))

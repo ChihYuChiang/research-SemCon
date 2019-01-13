@@ -15,7 +15,7 @@ pipeline.imgDownload_identifyFailure8Corruption(data, session)
 pipeline.imgDownload_reDownload(data, session)
 
 pipeline.textPreprocess_initSentiment(data)
-pipeline.textSummarize_initSentiment(data, model)
+pipeline.textSummarize_initSentiment(data, model, session, load=False)
 pipeline.textSummarize_trainSentiment(data, model, session, epochs=1)
 pipeline.textSummarize_predictSentiment(text, model)
 '''
