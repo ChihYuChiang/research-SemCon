@@ -246,6 +246,7 @@ def initLogger(loggerName, console=True, consoleLevel='DEBUG', fileLevel='INFO')
     #Create new logger
     logger = logging.getLogger(loggerName)
     logger.setLevel(logging.DEBUG)
+    logger.handlers = [] #Remove existing handlers
 
     #Formatter reference
     #'%(asctime)s - %(name)s - %(levelname)s - %(message)s'
