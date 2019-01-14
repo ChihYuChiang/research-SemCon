@@ -136,3 +136,65 @@ class Model_Sentiment(util.data.KerasModel):
         logger.info('Prediction')
         logger.info('input: {}'.format(x_new))
         logger.info('output: {}'.format(prediction))
+
+
+
+
+class Model_ExpTag(util.data.KerasModel):
+
+    def __init__(self, mapping=object()):
+        #`model` and `params` objects are created and handled in the inherited class
+        super().__init__(config.modelExpTagParams)
+        self.mapping = mapping
+
+    def preprocess_x(self, x):
+        #Text to index and remove sentence structure
+        #Use `get` return `None` when KeyError -> skipping terms not in dict
+        x = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in x]
+
+        #Pad sequence
+        x = sequence.pad_sequences(np.array(x), **config.modelSentimentParams.config_padSequence)
+
+        logger.info('x shape: {}'.format(x.shape))
+        return x
+
+    def preprocess_y(self, y):
+        pass
+
+    def compile(self):
+        weights = self.params.embWeightInit if self.params.embWeightInit is not None else np.zeros([self.params.vocabSize, self.params.embSize])
+        EmbWPresetWeight = Embedding(
+            input_dim=self.params.vocabSize, output_dim=self.params.embSize,
+            input_length=self.params.config_padSequence['maxlen'],
+            weights=[weights], trainable=True
+        )
+
+        inputs = Input(shape=(self.params.config_padSequence['maxlen'], ), dtype='int32')
+        _ = EmbWPresetWeight(inputs)
+        _ = Dropout(self.params.dropoutRate)(_)
+        _ = Conv1D(**self.params.config_conv1D, strides=1, padding='valid', activation='relu')(_)
+        _ = MaxPooling1D(self.params.poolSize)(_)
+        _ = LSTM(**self.params.config_LSTM)(_)
+        outputs = Dense(1, activation='linear')(_)
+
+        super().compile(inputs, outputs)
+        logger.info('Compiled sentiment model successfully.')
+
+    def train(self, x_train, y_train):
+        super().train(self.preprocess_x(x_train), self.preprocess_y(y_train))
+        logger.info('-' * 60)
+        logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
+
+    def evaluate(self, x_test, y_test):
+        loss, mae = super().evaluate(self.preprocess_x(x_test), self.preprocess_y(y_test))
+        logger.info('-' * 60)
+        logger.info('Evaluate')
+        logger.info('loss value: {}'.format(loss))
+        logger.info('mean absolute error: {}'.format(mae))
+
+    def predict(self, x_new):
+        prediction = super().predict(self.preprocess_x(x_new))
+        logger.info('-' * 60)
+        logger.info('Prediction')
+        logger.info('input: {}'.format(x_new))
+        logger.info('output: {}'.format(prediction))

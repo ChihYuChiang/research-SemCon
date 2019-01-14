@@ -8,16 +8,16 @@ data, model, session = pipeline.initialize(path.session)
 
 #--Operations
 '''
-pipeline.imgDownload_search(data, session, batchSize=2)
-pipeline.imgDownload_parse(data)
-pipeline.imgDownload_download(data, session, batchSize=2)
-pipeline.imgDownload_identifyFailure8Corruption(data, session)
-pipeline.imgDownload_reDownload(data, session)
+pipeline.img.download_search(data, session, batchSize=2)
+pipeline.img.download_parse(data)
+pipeline.img.download_download(data, session, batchSize=2)
+pipeline.img.download_identifyFailure8Corruption(data, session)
+pipeline.img.download_reDownload(data, session)
 
-pipeline.textPreprocess_initSentiment(data)
-pipeline.textSummarize_initSentiment(data, model, session, load=False)
-pipeline.textSummarize_trainSentiment(data, model, session, epochs=1)
-pipeline.textSummarize_predictSentiment(text, model)
+pipeline.text.preprocess_initSentiment(data)
+pipeline.text.summarize_initSentiment(data, model, session)
+pipeline.text.summarize_trainSentiment(data, model, session, epochs=4)
+pipeline.text.summarize_predictSentiment([''], model)
 '''
 
 
