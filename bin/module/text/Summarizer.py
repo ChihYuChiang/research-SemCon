@@ -72,14 +72,11 @@ class Model_Sentiment(util.data.KerasModel):
         """
         `ats` = a list of articles (string).
         """
+        #TODO: Try lemmatizer and stemmer
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
-        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
+        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().lemmatize().getNormalized()
 
-        if save[1]:
-            with open('{}tokenized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_tokenized, f)
-            with open('{}normalized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_normalized, f)
-            logger.info('Saved tokenized and normalized {} text at {}.'.format(save[0], path.textTkFolder))            
-        
+        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
         return ats_normalized
 
     def preprocess_x(self, x):
@@ -148,33 +145,35 @@ class Model_EncoderDecoder(util.data.KerasModel):
         self.mapping = mapping
 
     @staticmethod
-    def preprocess_text(ats, save=('', False)):
+    def preprocess_textX(ats, save=('', False)):
         """
-        `ats` = a list of articles (string).
+        Remove punctuation (sentence structure).
         """
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
 
-        if save[1]:
-            with open('{}tokenized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_tokenized, f)
-            with open('{}normalized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_normalized, f)
-            logger.info('Saved tokenized and normalized {} text at {}.'.format(save[0], path.textTkFolder))            
-        
+        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])        
         return ats_normalized
 
-    def preprocess_x(self, x):
-        #Text to index and remove sentence structure
+    @staticmethod
+    def preprocess_textY(ats, save=('', False)):
+        """
+        Keep punctuation (sentence structure).
+        """
+        #TODO: if not ended with ".", add one
+        ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
+        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filter().getNormalized()
+
+        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
+        return ats_normalized
+
+    def preprocess(self, ats):
+        #Text to index and use ats as units
         #Use `get` return `None` when KeyError -> skipping terms not in dict
         x = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in x]
 
-        #Pad sequence
-        x = sequence.pad_sequences(np.array(x), **config.modelSentimentParams.config_padSequence)
-
-        logger.info('x shape: {}'.format(x.shape))
+        logger.info('x shape: ({}, None)'.format(len(x)))
         return x
-
-    def preprocess_y(self, y):
-        pass
 
     def compile(self):
         weights = self.params.embWeightInit if self.params.embWeightInit is not None else np.zeros([self.params.vocabSize, self.params.embSize])
@@ -194,7 +193,8 @@ class Model_EncoderDecoder(util.data.KerasModel):
 
         #Input the verdict (t-1) for teacher forcing with the initial states from the encoder
         inputs_decoder = Input(shape=(None, num_decoder_tokens))
-        _ = LSTM(**self.params.config_decoderLSTM)(inputs_decoder, initial_state=[state_h, state_c])
+        _ = EmbWPresetWeight(inputs_decoder)
+        _ = LSTM(**self.params.config_decoderLSTM)(_, initial_state=[state_h, state_c])
 
         #Output the verdict
         outputs = Dense(num_decoder_tokens, activation='softmax')(_)
