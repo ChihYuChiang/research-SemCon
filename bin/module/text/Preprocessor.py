@@ -71,37 +71,37 @@ class Normalizer():
     
     def lower(self):
         self.gen = (((tk.lower() for tk in st) for st in at) for at in self.gen)
-        logger.info('Included "lower" operation for Normalizer.')
+        logger.info('Included "lower" operation in Normalizer.')
         return self
 
     def filterNonWord(self):
         self.gen = (((tk for tk in st if tk.isalpha()) for st in at) for at in self.gen)
-        logger.info('Included "filterNonWord" operation for Normalizer.')
+        logger.info('Included "filterNonWord" operation in Normalizer.')
         return self
     
     def filterStop(self, stopwords=config.stopwords):
         self.gen = (((tk for tk in st if tk not in stopwords) for st in at) for at in self.gen)
-        logger.info('Included "filterStop" operation for Normalizer.')
+        logger.info('Included "filterStop" operation in Normalizer.')
         return self
 
     def keep(self, words2Keep=config.words2Keep):
         self.gen = (((tk for tk in st if tk in words2Keep) for st in at) for at in self.gen)
-        logger.info('Included "keep" operation for Normalizer.')
+        logger.info('Included "keep" operation in Normalizer.')
         return self
 
     def filter(self, words2Filter=config.words2Filter):
         self.gen = (((tk for tk in st if tk not in words2Filter) for st in at) for at in self.gen)
-        logger.info('Included "filter" operation for Normalizer.')
+        logger.info('Included "filter" operation in Normalizer.')
         return self
 
     def lemmatize(self, lemmatizer=config.lemmatizer):
         self.gen = (((lemmatizer(tk) for tk in st) for st in at) for at in self.gen)
-        logger.info('Included "lemmatize" operation for Normalizer.')
+        logger.info('Included "lemmatize" operation in Normalizer.')
         return self
 
     def stem(self, stemmer=config.stemmer):
         self.gen = (((stemmer(tk) for tk in st) for st in at) for at in self.gen)
-        logger.info('Included "stem" operation for Normalizer.')
+        logger.info('Included "stem" operation in Normalizer.')
         return self
     
     @classmethod
@@ -256,6 +256,6 @@ class EmbOperation():
 
 
 def saveTokens(tokenized, normalized, desc):
-    with open('{}tokenized_{}.pkl'.format(path.textTkFolder, desc), 'wb') as f: pickle.dump(ats_tokenized, f)
-    with open('{}normalized_{}.pkl'.format(path.textTkFolder, desc), 'wb') as f: pickle.dump(ats_normalized, f)
+    with open('{}tokenized_{}.pkl'.format(path.textTkFolder, desc), 'wb') as f: pickle.dump(tokenized, f)
+    with open('{}normalized_{}.pkl'.format(path.textTkFolder, desc), 'wb') as f: pickle.dump(normalized, f)
     logger.info('Saved tokenized and normalized {} text at {}.'.format(desc, path.textTkFolder))

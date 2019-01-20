@@ -72,14 +72,13 @@ class Model_Sentiment(util.data.KerasModel):
         """
         `ats` = a list of articles (string).
         """
-        #TODO: Try lemmatizer and stemmer
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().lemmatize().getNormalized()
 
         if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
         return ats_normalized
 
-    def preprocess_x(self, x):
+    def preprocess_tokenX(self, x):
         #Text to index and remove sentence structure
         #Use `get` return `None` when KeyError -> skipping terms not in dict
         x = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in x]
@@ -90,7 +89,7 @@ class Model_Sentiment(util.data.KerasModel):
         logger.info('x shape: {}'.format(x.shape))
         return x
 
-    def preprocess_y(self, y):
+    def preprocess_tokenY(self, y):
         y = np.array(y)
 
         logger.info('y shape: {}'.format(y.shape))
@@ -116,19 +115,19 @@ class Model_Sentiment(util.data.KerasModel):
         logger.info('Compiled sentiment model successfully.')
 
     def train(self, x_train, y_train):
-        super().train(self.preprocess_x(x_train), self.preprocess_y(y_train))
+        super().train(self.preprocess_tokenX(x_train), self.preprocess_tokenY(y_train))
         logger.info('-' * 60)
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
     def evaluate(self, x_test, y_test):
-        loss, mae = super().evaluate(self.preprocess_x(x_test), self.preprocess_y(y_test))
+        loss, mae = super().evaluate(self.preprocess_tokenX(x_test), self.preprocess_tokenY(y_test))
         logger.info('-' * 60)
         logger.info('Evaluate')
         logger.info('loss value: {}'.format(loss))
         logger.info('mean absolute error: {}'.format(mae))
 
     def predict(self, x_new):
-        prediction = super().predict(self.preprocess_x(x_new))
+        prediction = super().predict(self.preprocess_tokenX(x_new))
         logger.info('-' * 60)
         logger.info('Prediction')
         logger.info('input: {}'.format(x_new))
@@ -152,7 +151,7 @@ class Model_EncoderDecoder(util.data.KerasModel):
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
 
-        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])        
+        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
         return ats_normalized
 
     @staticmethod
@@ -160,20 +159,24 @@ class Model_EncoderDecoder(util.data.KerasModel):
         """
         Keep punctuation (sentence structure).
         """
-        #TODO: if not ended with ".", add one
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filter().getNormalized()
+
+        #Ensure the sentence-ending token
+        for at in ats_normalized:
+            for st in at:
+                if st[-1] not in ['.', '!', '?']: st.append('.') 
 
         if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
         return ats_normalized
 
-    def preprocess(self, ats):
+    def preprocess_token(self, ats):
         #Text to index and use ats as units
         #Use `get` return `None` when KeyError -> skipping terms not in dict
-        x = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in x]
+        ats = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in ats]
 
-        logger.info('x shape: ({}, None)'.format(len(x)))
-        return x
+        logger.info('ats shape: ({}, None)'.format(len(ats)))
+        return ats
 
     def compile(self):
         weights = self.params.embWeightInit if self.params.embWeightInit is not None else np.zeros([self.params.vocabSize, self.params.embSize])
