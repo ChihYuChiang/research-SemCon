@@ -140,12 +140,27 @@ class Model_Sentiment(util.data.KerasModel):
 
 
 
-class Model_ExpTag(util.data.KerasModel):
+class Model_EncoderDecoder(util.data.KerasModel):
+    #With teacher forcing, used to acquire the encoding
 
     def __init__(self, mapping=object()):
-        #`model` and `params` objects are created and handled in the inherited class
-        super().__init__(config.modelExpTagParams)
+        super().__init__(config.modelEncoderDecoderParams)
         self.mapping = mapping
+
+    @staticmethod
+    def preprocess_text(ats, save=('', False)):
+        """
+        `ats` = a list of articles (string).
+        """
+        ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
+        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
+
+        if save[1]:
+            with open('{}tokenized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_tokenized, f)
+            with open('{}normalized_{}.pkl'.format(path.textTkFolder, save[0]), 'wb') as f: pickle.dump(ats_normalized, f)
+            logger.info('Saved tokenized and normalized {} text at {}.'.format(save[0], path.textTkFolder))            
+        
+        return ats_normalized
 
     def preprocess_x(self, x):
         #Text to index and remove sentence structure
@@ -169,32 +184,31 @@ class Model_ExpTag(util.data.KerasModel):
             weights=[weights], trainable=True
         )
 
-        inputs = Input(shape=(self.params.config_padSequence['maxlen'], ), dtype='int32')
-        _ = EmbWPresetWeight(inputs)
+        #Input the whole text
+        inputs_encoder = Input(shape=(self.params.config_padSequence['maxlen'], ), dtype='int32')
+        _ = EmbWPresetWeight(inputs_encoder)
         _ = Dropout(self.params.dropoutRate)(_)
         _ = Conv1D(**self.params.config_conv1D, strides=1, padding='valid', activation='relu')(_)
         _ = MaxPooling1D(self.params.poolSize)(_)
-        _ = LSTM(**self.params.config_LSTM)(_)
-        outputs = Dense(1, activation='linear')(_)
+        _, state_h, state_c = LSTM(**self.params.config_encoderLSTM)(_)
 
-        super().compile(inputs, outputs)
-        logger.info('Compiled sentiment model successfully.')
+        #Input the verdict (t-1) for teacher forcing with the initial states from the encoder
+        inputs_decoder = Input(shape=(None, num_decoder_tokens))
+        _ = LSTM(**self.params.config_decoderLSTM)(inputs_decoder, initial_state=[state_h, state_c])
+
+        #Output the verdict
+        outputs = Dense(num_decoder_tokens, activation='softmax')(_)
+
+        super().compile([inputs_encoder, inputs_decoder], outputs)
+        logger.info('Compiled encoder model successfully.')
 
     def train(self, x_train, y_train):
         super().train(self.preprocess_x(x_train), self.preprocess_y(y_train))
         logger.info('-' * 60)
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
-    def evaluate(self, x_test, y_test):
-        loss, mae = super().evaluate(self.preprocess_x(x_test), self.preprocess_y(y_test))
-        logger.info('-' * 60)
-        logger.info('Evaluate')
-        logger.info('loss value: {}'.format(loss))
-        logger.info('mean absolute error: {}'.format(mae))
+    def evaluate(self): pass
+        #No need to evaluate. The real outputs are those of the inference model which uses the encoding from this model as input
 
-    def predict(self, x_new):
-        prediction = super().predict(self.preprocess_x(x_new))
-        logger.info('-' * 60)
-        logger.info('Prediction')
-        logger.info('input: {}'.format(x_new))
-        logger.info('output: {}'.format(prediction))
+    def predict(self): pass
+        #Due to the extra input of teacher forcing, can't be directly used to predict -> Use the decoder models
