@@ -14,9 +14,9 @@ pipeline.img.download_download(data, session, batchSize=2)
 pipeline.img.download_identifyFailure8Corruption(data, session)
 pipeline.img.download_reDownload(data, session)
 
-pipeline.text.preprocess_initSentiment(data)
-pipeline.text.summarize_initSentiment(data, model, session)
-pipeline.text.summarize_trainSentiment(data, model, session, epochs=4)
+pipeline.text.preprocess_initSentiment(data, load=True)
+pipeline.text.summarize_initSentiment(data, model, session, load=True)
+pipeline.text.summarize_trainSentiment(data, model, session, epochs=3)
 pipeline.text.summarize_predictSentiment([''], model)
 '''
 

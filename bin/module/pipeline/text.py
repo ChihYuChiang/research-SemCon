@@ -5,9 +5,15 @@ import bin.module.text.Preprocessor as TextPreprocessor
 import bin.module.text.Summarizer as TextSummarizer
 
 import bin.module.util as util
-from bin.setting import path
+from bin.setting import path, cred
 
-logger = util.general.initLogger(loggerName='pipeline')
+logger = util.general.initLogger(
+    loggerName='pipeline',
+    slack={
+        **cred.Slack,
+        'level': 'WARNING',
+        'channel': '#py-logger'
+    })
 
 
 def preprocess_initSentiment(data, load=True):

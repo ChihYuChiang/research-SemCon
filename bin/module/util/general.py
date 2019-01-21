@@ -233,13 +233,20 @@ def readJsls(path):
     return output
 
 
-def initLogger(loggerName, console=True, consoleLevel='DEBUG', fileLevel='INFO'):
+def initLogger(loggerName, file='INFO', console='DEBUG', slack=None):
     """
     Initialize a logger using logging module
-    - INFO or up will be saved in file.
-    - DEBUG or up will be printed in console.
+    - INFO or above will be saved in file.
+    - DEBUG or above will be printed in console.
+    - Slack handler can be configured.
+    - slack = {
+        'level': 'WARNING',
+        'host': 'slack.com',
+        'url': '/api/chat.postMessage',
+        'token': cred.Slack.token,
+        'channel': '#general'
+    }
     - https://docs.python.org/3/library/logging.html#logging-levels.
-    - More information is logged in log file than in console. 
     """
     import logging
 
@@ -252,17 +259,33 @@ def initLogger(loggerName, console=True, consoleLevel='DEBUG', fileLevel='INFO')
     #'%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
     #Create file handler and add to logger
-    fh = logging.FileHandler('log/{}.log'.format(loggerName), mode='w+')
-    fh.setLevel(fileLevel)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
-    logger.addHandler(fh)
+    if file:
+        fh = logging.FileHandler('log/{}.log'.format(loggerName), mode='w+')
+        fh.setLevel(file)
+        fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(fh)
     
     #Create console handler and add to logger
     if console:
         ch = logging.StreamHandler()
-        ch.setLevel(consoleLevel)
+        ch.setLevel(console)
         ch.setFormatter(logging.Formatter('%(message)s'))
         logger.addHandler(ch)
+    
+    #Create http handler for Slack integration
+    #https://api.slack.com/methods/chat.postMessage
+    if slack:
+        cred = getConfigObj('ref/credential.yml')
+        sh = logging.handlers.HTTPHandler(host=slack.pop('host'), url=slack.pop('url'), method='POST', secure=True)
+        sh.setLevel(slack.pop('level'))
+        def mapLogRecord(record):
+            return {
+                **slack,
+                'text': record.__dict__['message'],
+                'username': 'Python Logger - ' + loggerName
+            }
+        sh.mapLogRecord = mapLogRecord
+        logger.addHandler(sh)
 
     return logger
 

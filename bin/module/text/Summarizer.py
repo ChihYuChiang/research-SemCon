@@ -144,18 +144,18 @@ class Model_EncoderDecoder(util.data.KerasModel):
         self.mapping = mapping
 
     @staticmethod
-    def preprocess_textX(ats, save=('', False)):
+    def preprocess_textX(ats, save=('x', False)):
         """
         Remove punctuation (sentence structure).
         """
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
-        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
+        ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().lemmatize().getNormalized()
 
         if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
         return ats_normalized
 
     @staticmethod
-    def preprocess_textY(ats, save=('', False)):
+    def preprocess_textY(ats, save=('y', False)):
         """
         Keep punctuation (sentence structure).
         """
@@ -206,7 +206,7 @@ class Model_EncoderDecoder(util.data.KerasModel):
         logger.info('Compiled encoder model successfully.')
 
     def train(self, x_train, y_train):
-        super().train(self.preprocess_x(x_train), self.preprocess_y(y_train))
+        super().train([self.preprocess_token(xEncoder_train), self.preprocess_token(xDecoder_train)], self.preprocess_token(y_train))
         logger.info('-' * 60)
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
