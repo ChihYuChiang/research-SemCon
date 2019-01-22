@@ -14,7 +14,7 @@ path = util.general.SettingContainer(
     textTkFolder   = 'data/text/tokenized/',
     textDictFolder = 'data/text/dictionary/',
     textEmbFolder  = 'data/text/emb/',
-    textDf         = 'data/text/df_cb_main.csv',          #Include only GameSpot
+    textDf         = 'data/text/df_cb_main.csv', #Only GameSpot, encoding cp1252
     textDfCombined = 'data/text/df_cb_main_combined.csv', #Include all  3 sites
     textIMDBFolder = 'data/text/aclImdb/',
     textIMDBDf     = 'data/text/df_imdb.csv',
@@ -58,7 +58,6 @@ textPreprocessor = util.general.SettingContainer(
 textSummarizer = util.general.SettingContainer(
     modelSentimentParams = util.general.SettingContainer(
         #Data
-        vocabSize = 0,
         batchSize = 32,
         config_padSequence = {
             'maxlen': 200, #Use only the first 200 words
@@ -67,8 +66,8 @@ textSummarizer = util.general.SettingContainer(
         },
 
         #Model
-        embWeightInit = None,
         embSize = 300,
+        embTranable = True,
         dropoutRate = 0.25,
         poolSize = 4,
         config_conv1D = {
@@ -84,6 +83,41 @@ textSummarizer = util.general.SettingContainer(
             'loss': 'logcosh',
             'optimizer': 'adam',
             'metrics': ['mean_absolute_error']
+        },
+
+        #Training
+        config_training = {
+            'epochs': 1,
+            'shuffle': True #After each epoch
+        }
+    ),
+    modelEncoderDecoderParams = util.general.SettingContainer(
+        #Data
+        batchSize = 32,
+
+        #Model
+        embSize = 300,
+        embTranable = False,
+        dropoutRate = 0.25,
+        poolSize = 4,
+        config_conv1D = {
+            'filters': 64,
+            'kernel_size': 5
+        },
+        config_encoderLSTM = {
+            'units': 256,
+            'return_state': True
+        },
+        config_decoderLSTM = {
+            'units': 128,
+            'return_sequences': True,
+            'return_state': True
+        },
+
+        #Compile
+        config_compile = {
+            'loss': 'categorical_crossentropy',
+            'optimizer': 'adam'
         },
 
         #Training

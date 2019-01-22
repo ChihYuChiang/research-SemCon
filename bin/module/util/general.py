@@ -55,9 +55,12 @@ class UniversalContainer():
     - Print object to see all key and data (recursive). Maximum print len for each item is 100.
     - getKeys() shows all attribute keys of this object (current level).
     - getMethods() shows all methods of this object.
+    - get() works as the same method of a dict.
     """
 
     def __repr__(self, level=0):
+        import pandas as pd
+
         keys = [item for item in dir(self) if not callable(getattr(self, item)) and not item.startswith("__")]
         rep = []
 
@@ -67,7 +70,8 @@ class UniversalContainer():
                 rep.append('-' * 3 * level + '.' + key)
                 rep.append(attr.__repr__(level + 1))
             else:
-                attrStr = str(attr)
+                #Print index only if a pandas df
+                attrStr = str(attr.keys()) if isinstance(attr, pd.core.frame.DataFrame) else str(attr)
                 rep.append('-' * 3 * level + '.' + key)
                 rep.append('-' * 3 * level + ' ' + (attrStr[:100] + ' \u2026' if len(attrStr) > 100 else attrStr)) #Unicode for horizontal ellipsis
 
@@ -78,6 +82,9 @@ class UniversalContainer():
 
     def getMethods(self):
         return [item for item in dir(self) if callable(getattr(self, item)) and not item.startswith("__")]
+    
+    def get(self, key, default=None):
+        return self[key] if key in dir(self) else default
 
 
 class DataContainer(UniversalContainer):
