@@ -18,6 +18,10 @@ pipeline.text.preprocess_initSentiment(data, load=True)
 pipeline.text.summarize_initSentiment(data, model, session, load=True)
 pipeline.text.summarize_trainSentiment(data, model, session, epochs=3)
 pipeline.text.summarize_predictSentiment([''], model)
+
+pipeline.text.preprocess_initEncoderDecoder(data, load=True)
+pipeline.text.summarize_initEncoderDecoder(data, model, session, load=True)
+pipeline.text.summarize_trainEncoderDecoder(data, model, session, epochs=1)
 '''
 
 

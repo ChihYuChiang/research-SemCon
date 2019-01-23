@@ -223,14 +223,14 @@ class KerasModel(ABC):
         self.model.summary()
 
 
-def ids2Onehot(ids):
+def ids2Onehot(ids, vocabSize):
     """
     - Input: a list of word index.
-    - Output: a onehot numpy array with dimension (len(ids), max(ids)) 
+    - Output: a onehot numpy array with dimension (len(ids), vocabSize 
     """
     import numpy as np
-
-    m, n = len(ids), max(ids) + 1
+    
+    m, n = len(ids), vocabSize
     onehot = np.zeros((m, n))
     onehot[np.arange(m), np.array(ids)] = 1
 

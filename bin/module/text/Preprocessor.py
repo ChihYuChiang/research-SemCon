@@ -173,16 +173,16 @@ class Mapping():
     
     @classmethod
     def test_makeDict(cls):
-        mapping = cls(tokens)
+        mapping = cls(cls.test_tokens)
         mapping.makeDict()
-        print(tokens)
+        print(cls.test_tokens)
         print(mapping.dict.id2token)
         print(mapping.dict.token2id)
 
     @classmethod
     def test_brief(cls):
-        print(tokens)
-        cls(tokens).brief()
+        print(cls.test_tokens)
+        cls(cls.test_tokens).brief()
 
 
 
@@ -204,7 +204,8 @@ class EmbOperation():
     @staticmethod
     def loadPretrainedEmb(path):
         """
-        Load pretrained emb.
+        Load pretrained emb
+        - Note for GoogleNews: w/o punctuation, w/o stemming, w stopwords, w some n-grams
         """
         emb = KeyedVectors.load_word2vec_format(path, binary=True)
 

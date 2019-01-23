@@ -68,14 +68,15 @@ class Model_Sentiment(util.data.KerasModel):
         self.mapping = mapping
 
     @staticmethod
-    def preprocess_text(ats, save=('', False)):
+    def preprocess_text(ats, save=None):
         """
-        `ats` = a list of articles (string).
+        - `ats` = a list of articles (string).
+        - Provide a desc to save the normalized tokens. The desc will also be used in the filename.
         """
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().lemmatize().getNormalized()
 
-        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
+        if save: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save)
         return ats_normalized
 
     def preprocess_tokenX(self, x):
@@ -96,19 +97,26 @@ class Model_Sentiment(util.data.KerasModel):
         return y
 
     def compile(self):
-        weights = self.params.embWeightInit if self.params.embWeightInit is not None else np.zeros([self.params.vocabSize, self.params.embSize])
+        """
+        Must provide either `self.params.embWeightInit` or `self.params.vocabSize`.
+        """
+        if self.params.get('embWeightInit') is not None:
+            self.params.update(vocabSize=len(self.params.embWeightInit))
+        weights = self.params.get('embWeightInit', np.zeros([self.params.get('vocabSize'), self.params.embSize]))
         EmbWPresetWeight = Embedding(
-            input_dim=self.params.vocabSize, output_dim=self.params.embSize,
+            input_dim=self.params.vocabSize,
+            output_dim=self.params.embSize,
             input_length=self.params.config_padSequence['maxlen'],
-            weights=[weights], trainable=True
+            weights=[weights],
+            trainable=self.params.embTrainable
         )
 
-        inputs = Input(shape=(self.params.config_padSequence['maxlen'], ), dtype='int32')
+        inputs = Input(shape=(self.params.config_padSequence['maxlen'],), dtype='int32')
         _ = EmbWPresetWeight(inputs)
         _ = Dropout(self.params.dropoutRate)(_)
         _ = Conv1D(**self.params.config_conv1D, strides=1, padding='valid', activation='relu')(_)
         _ = MaxPooling1D(self.params.poolSize)(_)
-        _ = LSTM(**self.params.config_LSTM)(_)
+        _ = LSTM(units=self.params.LSTMUnits)(_)
         outputs = Dense(1, activation='linear')(_)
 
         super().compile(inputs, outputs)
@@ -139,25 +147,28 @@ class Model_Sentiment(util.data.KerasModel):
 class Model_EncoderDecoder(util.data.KerasModel):
     #With teacher forcing, used to acquire the encoding
 
-    def __init__(self, mapping=object()):
+    def __init__(self, mapping_review=object(),  mapping_verdict=object()):
         super().__init__(config.modelEncoderDecoderParams)
-        self.mapping = mapping
+        self.mapping_review = mapping_review
+        self.mapping_verdict = mapping_verdict
 
     @staticmethod
-    def preprocess_textX(ats, save=('x', False)):
+    def preprocess_textX(ats, save=None):
         """
-        Remove punctuation (sentence structure).
+        - Remove punctuation (sentence structure).
+        - Provide a desc to save the normalized tokens. The desc will also be used in the filename.
         """
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filterStop().filterNonWord().filter().lemmatize().getNormalized()
-
-        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
+        
+        if save: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save)
         return ats_normalized
 
     @staticmethod
-    def preprocess_textY(ats, save=('y', False)):
+    def preprocess_textY(ats, save=None):
         """
-        Keep punctuation (sentence structure).
+        - Keep punctuation (sentence structure).
+        - Provide a desc to save the normalized tokens. The desc will also be used in the filename.
         """
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filter().getNormalized()
@@ -167,46 +178,73 @@ class Model_EncoderDecoder(util.data.KerasModel):
             for st in at:
                 if st[-1] not in ['.', '!', '?']: st.append('.') 
 
-        if save[1]: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save[0])
+        if save: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save)
         return ats_normalized
 
-    def preprocess_token(self, ats):
+    def preprocess_token(self, ats, mapping):
         #Text to index and use ats as units
         #Use `get` return `None` when KeyError -> skipping terms not in dict
-        ats = [list(util.general.flattenList([[self.mapping.token2id.get(term) for term in st if self.mapping.token2id.get(term)] for st in at])) for at in ats]
+        ats = [list(util.general.flattenList([[mapping.token2id.get(term) for term in st if mapping.token2id.get(term)] for st in at])) for at in ats]
 
         logger.info('ats shape: ({}, None)'.format(len(ats)))
-        return ats
+        return np.array(ats)
 
     def compile(self):
-        weights = self.params.embWeightInit if self.params.embWeightInit is not None else np.zeros([self.params.vocabSize, self.params.embSize])
-        EmbWPresetWeight = Embedding(
-            input_dim=self.params.vocabSize, output_dim=self.params.embSize,
-            input_length=self.params.config_padSequence['maxlen'],
-            weights=[weights], trainable=True
+        """
+        Must provide either:
+        - `self.params.embWeightInit_review` and `self.params.embWeightInit_verdict`
+        - or `self.params.vocabSize_review` and `self.params.vocabSize_verdict`
+        """
+        if self.params.get('embWeightInit_review') is not None:
+            self.params.update(vocabSize_review=len(self.params.embWeightInit_review))
+        if self.params.get('embWeightInit_verdict') is not None:
+            self.params.update(vocabSize_verdict=len(self.params.embWeightInit_verdict))
+        weights_review = self.params.get('embWeightInit_review', np.zeros([self.params.get('vocabSize_review'), self.params.encoderEmb['size']]))
+        weights_verdict = self.params.get('embWeightInit_verdict', np.zeros([self.params.get('vocabSize_verdict'), self.params.decoderEmb['size']]))
+        Emb_Encoder = Embedding(
+            input_dim=self.params.vocabSize_review,
+            output_dim=self.params.encoderEmb['size'],
+            weights=[weights_review],
+            trainable=self.params.encoderEmb['trainable']
+        )
+        Emb_Decoder = Embedding(
+            input_dim=self.params.vocabSize_verdict,
+            output_dim=self.params.decoderEmb['size'],
+            weights=[weights_verdict],
+            trainable=self.params.decoderEmb['trainable']
         )
 
         #Input the whole text
-        inputs_encoder = Input(shape=(self.params.config_padSequence['maxlen'], ), dtype='int32')
-        _ = EmbWPresetWeight(inputs_encoder)
+        inputs_encoder = Input(shape=(None,), dtype='int32')
+        _ = Emb_Encoder(inputs_encoder)
         _ = Dropout(self.params.dropoutRate)(_)
         _ = Conv1D(**self.params.config_conv1D, strides=1, padding='valid', activation='relu')(_)
         _ = MaxPooling1D(self.params.poolSize)(_)
-        _, state_h, state_c = LSTM(**self.params.config_encoderLSTM)(_)
+        _, state_h, state_c = LSTM(units=self.params.LSTMUnits, return_state=True)(_)
 
         #Input the verdict (t-1) for teacher forcing with the initial states from the encoder
-        inputs_decoder = Input(shape=(None, num_decoder_tokens))
-        _ = EmbWPresetWeight(inputs_decoder)
-        _ = LSTM(**self.params.config_decoderLSTM)(_, initial_state=[state_h, state_c])
+        inputs_decoder = Input(shape=(None,), dtype='int32')
+        _ = Emb_Decoder(inputs_decoder)
+        _ = LSTM(units=self.params.LSTMUnits, return_sequences=True)(_, initial_state=[state_h, state_c])
 
         #Output the verdict
-        outputs = Dense(num_decoder_tokens, activation='softmax')(_)
+        outputs = Dense(len(weights_verdict), activation='softmax')(_)
 
         super().compile([inputs_encoder, inputs_decoder], outputs)
-        logger.info('Compiled encoder model successfully.')
+        logger.info('Compiled encoder-decoder model successfully.')
 
-    def train(self, x_train, y_train):
-        super().train([self.preprocess_token(xEncoder_train), self.preprocess_token(xDecoder_train)], self.preprocess_token(y_train))
+    def train(self, review, verdict):
+        #Process tokens, shift each `at` for teacher forcing
+        xEncoder_train = self.preprocess_token(review, self.mapping_review)
+        
+        xDecoder_train = self.preprocess_token(verdict, self.mapping_verdict)
+        for at in xDecoder_train: at.pop(-1)
+
+        y_train = self.preprocess_token(verdict, self.mapping_verdict)
+        for at in y_train: at.pop(0)
+        y_train = np.array([util.data.ids2Onehot(at, self.params.vocabSize_verdict) for at in y_train])
+        
+        super().train([xEncoder_train, xDecoder_train], y_train)
         logger.info('-' * 60)
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 

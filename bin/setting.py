@@ -74,9 +74,7 @@ textSummarizer = util.general.SettingContainer(
             'filters': 64,
             'kernel_size': 5
         },
-        config_LSTM = {
-            'units': 64
-        },
+        LSTMUnits = 64,
 
         #Compile
         config_compile = {
@@ -93,25 +91,23 @@ textSummarizer = util.general.SettingContainer(
     ),
     modelEncoderDecoderParams = util.general.SettingContainer(
         #Data
-        batchSize = 32,
+        batchSize = 1,
 
         #Model
-        embSize = 300,
-        embTranable = False,
+        encoderEmb = {
+            'size': 300,
+            'trainable': False
+        },
         dropoutRate = 0.25,
         poolSize = 4,
         config_conv1D = {
             'filters': 64,
             'kernel_size': 5
         },
-        config_encoderLSTM = {
-            'units': 256,
-            'return_state': True
-        },
-        config_decoderLSTM = {
-            'units': 128,
-            'return_sequences': True,
-            'return_state': True
+        LSTMUnits = 256,
+        decoderEmb = {
+            'size': 300,
+            'trainable': True
         },
 
         #Compile
