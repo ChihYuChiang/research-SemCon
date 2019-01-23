@@ -72,9 +72,11 @@ class DfDispatcher():
     - Dispatch between `startRow` and `endRow` (inclusive).
     - Return (rowId, rowContent) for each row.
     - Useful encodings: "cp1252", "ISO-8859-1", "utf-8".
+    - `targetCols = where if NA exists, that row will be dropped.
     """
 
-    def __init__(self, filePath, startRow=0, endRow=None, encoding="utf-8", chunkSize=1000):
+    def __init__(self, filePath, startRow=0, endRow=None, encoding="utf-8", chunkSize=1000, targetCols=None):
+        self.targetCols = targetCols
         self.readCsvParam = {
             'filepath_or_buffer': filePath,
             'encoding': encoding,
@@ -89,7 +91,7 @@ class DfDispatcher():
     def __iter__(self):
         import pandas as pd
 
-        dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.iterrows())
+        dfIter = (row for chunk in pd.read_csv(**self.readCsvParam) for row in chunk.dropna(subset=self.targetCols).iterrows())
         i = 0
         #TODO: try use send() instead
         while i < self.startRow:
@@ -177,7 +179,7 @@ class KerasModel(ABC):
         from keras.models import Model
 
         self.model = Model(inputs=inputs, outputs=outputs)
-        self.model.compile(**self.params.config_compile) #TODO: customize the metric
+        self.model.compile(**self.params.config_compile)
         self.model.summary()
     
     @abstractmethod
@@ -219,3 +221,17 @@ class KerasModel(ABC):
         self.model.set_weights(weights)
         self.model.compile(**self.params.config_compile)
         self.model.summary()
+
+
+def ids2Onehot(ids):
+    """
+    - Input: a list of word index.
+    - Output: a onehot numpy array with dimension (len(ids), max(ids)) 
+    """
+    import numpy as np
+
+    m, n = len(ids), max(ids) + 1
+    onehot = np.zeros((m, n))
+    onehot[np.arange(m), np.array(ids)] = 1
+
+    return onehot
