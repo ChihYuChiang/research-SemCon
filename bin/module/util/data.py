@@ -1,3 +1,6 @@
+import numpy as np
+
+
 class SetDivider():
     """
     Acquire ids of arbitrary set division
@@ -9,8 +12,6 @@ class SetDivider():
     """
 
     def __init__(self, proportion, nSample=None, seed=1):
-        import numpy as np
-
         assert sum(proportion) == 1, '`proportion` must sum to 1.'
         self.proportion = proportion
         self.nSample = nSample
@@ -20,8 +21,6 @@ class SetDivider():
         np.random.seed(seed=seed)
 
     def _nSampleW(self):
-        import numpy as np
-
         #Number of indice for each set
         nIds = np.around(np.array(self.proportion) * self.nSample)
 
@@ -117,50 +116,51 @@ class KerasDataDispatcher(Sequence):
     - If `genData` data sources are generators, `idPool` has to be sequential--`shuffle` has to be `False`.
     '''
 
-    def __init__(self, sampleSize, batchSize, genData):
-        self.idPool = list(range(sampleSize))
+    def __init__(self, sampleSize, batchSize, genData, shuffle=False):
+        self.idPool = np.arange(sampleSize)
         self.batchSize = batchSize
         self.genData = genData
+        self.shuffle = shuffle
 
         self.on_epoch_end()
 
     def __len__(self):
-        import numpy as np
-
         return int(np.ceil(len(self.idPool) / float(self.batchSize)))
 
     def __getitem__(self, idx):
         targetIds = self.idPool[idx * self.batchSize:(idx + 1) * self.batchSize]
         return self.genData(targetIds)
     
-    def on_epoch_end(self): pass
+    def on_epoch_end(self):
+        """
+        Shuffle index after each epoch.
+        """
+        if self.shuffle == True: np.random.shuffle(self.idPool)
 
 
 class BatchDispatcher():
     '''
-    - Functions return a batch of samples based on `targetId` and datasets.
-    - Used as the `genData` in `KerasDataDispatcher`.
+    Functions return a batch of samples based on `targetId` and datasets
+    - Using `dispatchSeq`, the input can be a gen or an iterator.
+    - Using `dispatchNonSeq`, the input must be a iterator instead of a gen.
+    - Used as the base of `genData` in `KerasDataDispatcher`.
     '''
 
-    def dispatchSeq(targetIds, X, Y):
-        from typing import Generator
+    @staticmethod
+    def dispatchSeq(targetIds, iterator):
+        return np.array([next(iterator) for _ in targetIds])
 
-        if not isinstance(X, Generator):
-            X = iter(X)
-            Y = iter(Y)
-        count = max(targetIds) - min(targetIds) + 1
-            
-        return [(X.next(), Y.next()) for i in count]
-
-    def dispatchNonSeq(targetIds, X, Y):
-        return [(X[i], Y[i]) for i in targetIds]
+    @staticmethod
+    def dispatchNonSeq(targetIds, iterator):
+        return np.array(iterator[targetIds])
 
 
 from abc import ABC, abstractmethod
-class KerasModel(ABC):
+class KerasModelBase(ABC):
     """
     Abstract class for implementing Keras model.
     - Handle `model`, `params`, and common operations.
+    - When inherit, must also inherit `KerasModel` or `KerasModelGen`.
     """
 
     def __init__(self, params):
@@ -169,6 +169,7 @@ class KerasModel(ABC):
         self.model = object()
         self.params = util.general.SettingContainer(
             batchSize = 32,
+            config_multiprocessing = {},
             config_compile = {}, config_training = {},
             config_evaluate = {}, config_predict = {}
         )
@@ -181,22 +182,6 @@ class KerasModel(ABC):
         self.model = Model(inputs=inputs, outputs=outputs)
         self.model.compile(**self.params.config_compile)
         self.model.summary()
-    
-    @abstractmethod
-    def train(self, x_train, y_train):
-        trainingHistory = self.model.fit(x_train, y_train, batch_size=self.params.batchSize, **self.params.config_training)
-        return trainingHistory
-
-    @abstractmethod
-    def evaluate(self, x_test, y_test):
-        metrics = self.model.evaluate(x_test, y_test, batch_size=self.params.batchSize, **self.params.config_evaluate)
-        return metrics
-
-    @abstractmethod    
-    def predict(self, x_new):
-        prediction = self.model.predict(x_new,
-            batch_size=self.params.batchSize, **self.params.config_predict)
-        return prediction
 
     def save(self, path, **other):
         import pickle
@@ -223,13 +208,68 @@ class KerasModel(ABC):
         self.model.summary()
 
 
+class KerasModel(ABC):
+    """
+    Real data (numpy arrays) as input.
+    """
+
+    @abstractmethod
+    def train(self, x_train, y_train):
+        trainingHistory = self.model.fit(x_train, y_train, batch_size=self.params.batchSize, **self.params.config_training)
+        return trainingHistory
+
+    @abstractmethod
+    def evaluate(self, x_test, y_test):
+        metrics = self.model.evaluate(x_test, y_test, batch_size=self.params.batchSize, **self.params.config_evaluate)
+        return metrics
+
+    @abstractmethod    
+    def predict(self, x_new):
+        prediction = self.model.predict(x_new,
+            batch_size=self.params.batchSize, **self.params.config_predict)
+        return prediction
+
+
+class KerasModelGen(ABC):
+    """
+    Generator as input, each iterate as a batch.
+    """
+
+    @abstractmethod
+    def train(self, gen_train):
+        trainingHistory = self.model.fit_generator(
+            generator=gen_train,
+            **self.params.config_multiprocessing,
+            **self.params.config_training
+        )
+        return trainingHistory
+
+    @abstractmethod
+    def evaluate(self, gen_test):
+        metrics = self.model.evaluate_generator(
+            generator=gen_test,
+            **self.params.config_multiprocessing,
+            **self.params.config_evaluate
+        )
+        return metrics
+
+    @abstractmethod    
+    def predict(self, gen_new):
+        prediction = self.model.predict(
+            generator=gen_new,
+            **self.params.config_multiprocessing,
+            **self.params.config_predict
+        )
+        return prediction
+
+
+
+
 def ids2Onehot(ids, vocabSize):
     """
     - Input: a list of word index.
     - Output: a onehot numpy array with dimension (len(ids), vocabSize 
     """
-    import numpy as np
-    
     m, n = len(ids), vocabSize
     onehot = np.zeros((m, n))
     onehot[np.arange(m), np.array(ids)] = 1

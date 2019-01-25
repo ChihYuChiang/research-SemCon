@@ -90,8 +90,11 @@ textSummarizer = util.general.SettingContainer(
         }
     ),
     modelEncoderDecoderParams = util.general.SettingContainer(
-        #Data
-        batchSize = 1,
+        #Multiprocessing
+        config_multiprocessing = {
+            'use_multiprocessing': True,
+            'workers': 6
+        },
 
         #Model
         encoderEmb = {
@@ -118,8 +121,7 @@ textSummarizer = util.general.SettingContainer(
 
         #Training
         config_training = {
-            'epochs': 1,
-            'shuffle': True #After each epoch
+            'epochs': 1
         }
     )
 )

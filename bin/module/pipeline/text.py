@@ -178,8 +178,8 @@ def summarize_initEncoderDecoder(data, model, session, load=True):
 
 def summarize_trainEncoderDecoder(data, model, session, epochs=1):
     model.encoderDecoder.params.config_training.epochs = epochs
-
     model.encoderDecoder.train(data.review_normalized, data.verdict_normalized)
+    
     model.encoderDecoder.save(path.modelFolder + 'model_encoder-decoder.pkl', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
     logger.info('Saved encoder-decoder model with mappings.')
 

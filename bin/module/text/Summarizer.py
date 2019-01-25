@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import os
 import re
+from functools import partial
 
 from keras.preprocessing import sequence
 from keras.layers import Input, Dense, Dropout
@@ -60,7 +61,11 @@ class IMDBReader():
 
 
 
-class Model_Sentiment(util.data.KerasModel):
+class Model_Sentiment(util.data.KerasModelBase, util.data.KerasModel):
+    """
+    - `preprocess_text`: text -> tokens.
+    - `preprocess_token`: tokens -> tokens w format specifically for this model.
+    """
 
     def __init__(self, mapping=object()):
         #`model` and `params` objects are created and handled in the inherited class
@@ -144,7 +149,7 @@ class Model_Sentiment(util.data.KerasModel):
 
 
 
-class Model_EncoderDecoder(util.data.KerasModel):
+class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
     #With teacher forcing, used to acquire the encoding
 
     def __init__(self, mapping_review=object(),  mapping_verdict=object()):
@@ -184,10 +189,10 @@ class Model_EncoderDecoder(util.data.KerasModel):
     def preprocess_token(self, ats, mapping):
         #Text to index and use ats as units
         #Use `get` return `None` when KeyError -> skipping terms not in dict
-        ats = [list(util.general.flattenList([[mapping.token2id.get(term) for term in st if mapping.token2id.get(term)] for st in at])) for at in ats]
+        ats = [np.array(list(util.general.flattenList([[mapping.token2id.get(term) for term in st if mapping.token2id.get(term)] for st in at]))) for at in ats]
 
-        logger.info('ats shape: ({}, None)'.format(len(ats)))
-        return np.array(ats)
+        logger.info('Shape of articles: ({}, None)'.format(len(ats)))
+        return ats
 
     def compile(self):
         """
@@ -215,7 +220,7 @@ class Model_EncoderDecoder(util.data.KerasModel):
         )
 
         #Input the whole text
-        inputs_encoder = Input(shape=(None,), dtype='int32')
+        inputs_encoder = Input(shape=(None,), dtype='int32', name='inputs_encoder')
         _ = Emb_Encoder(inputs_encoder)
         _ = Dropout(self.params.dropoutRate)(_)
         _ = Conv1D(**self.params.config_conv1D, strides=1, padding='valid', activation='relu')(_)
@@ -223,12 +228,12 @@ class Model_EncoderDecoder(util.data.KerasModel):
         _, state_h, state_c = LSTM(units=self.params.LSTMUnits, return_state=True)(_)
 
         #Input the verdict (t-1) for teacher forcing with the initial states from the encoder
-        inputs_decoder = Input(shape=(None,), dtype='int32')
+        inputs_decoder = Input(shape=(None,), dtype='int32', name='inputs_decoder')
         _ = Emb_Decoder(inputs_decoder)
         _ = LSTM(units=self.params.LSTMUnits, return_sequences=True)(_, initial_state=[state_h, state_c])
 
         #Output the verdict
-        outputs = Dense(len(weights_verdict), activation='softmax')(_)
+        outputs = Dense(len(weights_verdict), activation='softmax', name='outputs')(_)
 
         super().compile([inputs_encoder, inputs_decoder], outputs)
         logger.info('Compiled encoder-decoder model successfully.')
@@ -236,15 +241,33 @@ class Model_EncoderDecoder(util.data.KerasModel):
     def train(self, review, verdict):
         #Process tokens, shift each `at` for teacher forcing
         xEncoder_train = self.preprocess_token(review, self.mapping_review)
-        
         xDecoder_train = self.preprocess_token(verdict, self.mapping_verdict)
-        for at in xDecoder_train: at.pop(-1)
-
         y_train = self.preprocess_token(verdict, self.mapping_verdict)
-        for at in y_train: at.pop(0)
-        y_train = np.array([util.data.ids2Onehot(at, self.params.vocabSize_verdict) for at in y_train])
         
-        super().train([xEncoder_train, xDecoder_train], y_train)
+        xEncoder_train = [at[:-1] for at in xEncoder_train]
+        y_train = [at[1:] for at in y_train]
+
+        #Prepare data dispatcher
+        y_onehot = (util.data.ids2Onehot(y_train[i], self.params.vocabSize_verdict) for i in range(len(y_train)))
+        xEncoder_gen = partial(util.data.BatchDispatcher.dispatchSeq, iterator=iter(xEncoder_train))
+        xDecoder_gen = partial(util.data.BatchDispatcher.dispatchSeq, iterator=iter(xDecoder_train))
+        y_gen = partial(util.data.BatchDispatcher.dispatchSeq, iterator=y_onehot)
+
+        def genData(targetIds):
+            return (
+                {'inputs_encoder': xEncoder_gen(targetIds),
+                'inputs_decoder': xDecoder_gen(targetIds)},
+                {'outputs': y_gen(targetIds)}
+            )
+        
+        dataDispatcher = util.data.KerasDataDispatcher(
+            sampleSize=len(y_train),
+            batchSize=1, #Batch size must be 1 if the articles have dif len
+            genData=genData
+        )
+
+        #Training
+        super().train(dataDispatcher)
         logger.info('-' * 60)
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
