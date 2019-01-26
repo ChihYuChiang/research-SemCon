@@ -168,26 +168,40 @@ class KerasModelBase(ABC):
         self.model.summary()
 
     def save(self, path, **other):
+        """
+        `path` includes the folder containing 3 files pertaining to the model.
+        """
         import pickle
+        util.general.createFolder(path)
 
-        config = self.model.get_config()
-        weights = self.model.get_weights()
+        #Config (only the graph)
+        config = model.to_yaml()
+        with open(path + 'config.yaml', "w") as f:
+            f.write(config)
 
-        with open(path, 'wb') as f:
-            pickle.dump((config, weights, self.params, {**other}), f)
+        #Weights
+        model.save_weights(path + 'weights.h5')
+
+        #Other stuffs
+        with open(path + 'supplements.pkl', 'wb') as f:
+            pickle.dump((self.params, {**other}), f)
     
     def load(self, path):
         import pickle
         from keras.models import Model
 
-        with open(path, 'rb') as f:
-            config, weights, self.params, other = pickle.load(f)
+        #Config (only the graph)
+        with open(path + 'config.yaml', 'r') as f:
+            config = f.read()
 
+        #Other stuffs
+        with open(path + 'supplements.pkl', 'rb') as f:
+            self.params, other = pickle.load(f)
         for key, value in other.items():
             self.__dict__[key] = value
 
-        self.model = Model.from_config(config)
-        self.model.set_weights(weights)
+        self.model = model_from_yaml(config)
+        self.model.load_weights(path + 'weights.h5')
         self.model.compile(**self.params.config_compile)
         self.model.summary()
 

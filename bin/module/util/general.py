@@ -382,3 +382,8 @@ def isExhausted(iterable, marker=True):
         else: raise
 
     return itertools.chain([firstItem], iterable)
+
+def createFolder(path):
+    import pathlib
+
+    pathlib.Path(path).mkdir(parents=True, exist_ok=True)

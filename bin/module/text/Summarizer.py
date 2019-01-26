@@ -219,7 +219,7 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
             trainable=self.params.decoderEmb['trainable']
         )
 
-        #Input the whole text
+        #Input the whole text, shape=(batch, len(at))
         inputs_encoder = Input(shape=(None,), dtype='int32', name='inputs_encoder')
         _ = Emb_Encoder(inputs_encoder)
         _ = Dropout(self.params.dropoutRate)(_)
@@ -233,6 +233,7 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         _ = LSTM(units=self.params.LSTMUnits, return_sequences=True)(_, initial_state=[state_h, state_c])
 
         #Output the verdict
+        #No need for `TimeDistributed` when the `Dense` is following RNN layer, which implies a time dimension
         outputs = Dense(len(weights_verdict), activation='softmax', name='outputs')(_)
 
         super().compile([inputs_encoder, inputs_decoder], outputs)
@@ -273,6 +274,8 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
     def evaluate(self): pass
+        #TODO: sparse loss
+        #https://www.dlology.com/blog/how-to-use-keras-sparse_categorical_crossentropy/
         #No need to evaluate. The real outputs are those of the inference model which uses the encoding from this model as input
 
     def predict(self): pass
