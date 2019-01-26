@@ -112,8 +112,9 @@ from keras.utils import Sequence
 class KerasDataDispatcher(Sequence):
     '''
     Prepare data for Keras models with data generated on the go
+    - `genData` accepts a list of targetIds and return real data.
     - If `shuffle == True`, `idPool` will be shuffled for each epoch. Meaning, the order of the samples go through the network will be different.
-    - If `genData` data sources are generators, `idPool` has to be sequential--`shuffle` has to be `False`.
+    - If `genData` data sources are generators, the model will not be able to multiprocessing.
     '''
 
     def __init__(self, sampleSize, batchSize, genData, shuffle=False):
@@ -136,23 +137,6 @@ class KerasDataDispatcher(Sequence):
         Shuffle index after each epoch.
         """
         if self.shuffle == True: np.random.shuffle(self.idPool)
-
-
-class BatchDispatcher():
-    '''
-    Functions return a batch of samples based on `targetId` and datasets
-    - Using `dispatchSeq`, the input can be a gen or an iterator.
-    - Using `dispatchNonSeq`, the input must be a iterator instead of a gen.
-    - Used as the base of `genData` in `KerasDataDispatcher`.
-    '''
-
-    @staticmethod
-    def dispatchSeq(targetIds, iterator):
-        return np.array([next(iterator) for _ in targetIds])
-
-    @staticmethod
-    def dispatchNonSeq(targetIds, iterator):
-        return np.array(iterator[targetIds])
 
 
 from abc import ABC, abstractmethod

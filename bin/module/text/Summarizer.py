@@ -238,32 +238,33 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         super().compile([inputs_encoder, inputs_decoder], outputs)
         logger.info('Compiled encoder-decoder model successfully.')
 
+    def _genData(self, targetIds):
+        targetId = targetIds[0]
+
+        #Get onehot and reshape np arrays
+        xEncoder_train = self.xEncoder_train[targetId].reshape(1, len(self.xEncoder_train[targetId]))
+        xDecoder_train = self.xDecoder_train[targetId].reshape(1, len(self.xDecoder_train[targetId]))
+        y_onehot = util.data.ids2Onehot(self.y_train[targetId], self.params.vocabSize_verdict)
+        y_onehot = y_onehot.reshape(1, *y_onehot.shape)
+
+        return (
+            {'inputs_encoder': xEncoder_train,
+            'inputs_decoder': xDecoder_train},
+            {'outputs': y_onehot}
+        )
+
     def train(self, review, verdict):
         #Process tokens, shift each `at` for teacher forcing
-        xEncoder_train = self.preprocess_token(review, self.mapping_review)
-        xDecoder_train = self.preprocess_token(verdict, self.mapping_verdict)
-        y_train = self.preprocess_token(verdict, self.mapping_verdict)
-        
-        xEncoder_train = [at[:-1] for at in xEncoder_train]
-        y_train = [at[1:] for at in y_train]
+        verdict_processed = self.preprocess_token(verdict, self.mapping_verdict)
+        self.xEncoder_train = self.preprocess_token(review, self.mapping_review)
+        self.xDecoder_train = [at[:-1] for at in verdict_processed]
+        self.y_train = [at[1:] for at in verdict_processed]
 
         #Prepare data dispatcher
-        y_onehot = (util.data.ids2Onehot(y_train[i], self.params.vocabSize_verdict) for i in range(len(y_train)))
-        xEncoder_gen = partial(util.data.BatchDispatcher.dispatchSeq, iterator=iter(xEncoder_train))
-        xDecoder_gen = partial(util.data.BatchDispatcher.dispatchSeq, iterator=iter(xDecoder_train))
-        y_gen = partial(util.data.BatchDispatcher.dispatchSeq, iterator=y_onehot)
-
-        def genData(targetIds):
-            return (
-                {'inputs_encoder': xEncoder_gen(targetIds),
-                'inputs_decoder': xDecoder_gen(targetIds)},
-                {'outputs': y_gen(targetIds)}
-            )
-        
         dataDispatcher = util.data.KerasDataDispatcher(
-            sampleSize=len(y_train),
-            batchSize=1, #Batch size must be 1 if the articles have dif len
-            genData=genData
+            sampleSize=len(verdict_processed),
+            batchSize=1, #Batch size must be 1 while the articles have dif len (if we decide not to pad)
+            genData=self._genData
         )
 
         #Training
