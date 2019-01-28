@@ -185,7 +185,7 @@ class KerasModelBase(ABC):
         with open(path + 'supplements.pkl', 'wb') as f:
             pickle.dump((self.params, {**other}), f)
     
-    def load(self, path):
+    def load(self, path, compile=True):
         import pickle
         from keras.models import Model
 
@@ -201,8 +201,10 @@ class KerasModelBase(ABC):
 
         self.model = model_from_yaml(config)
         self.model.load_weights(path + 'weights.h5')
-        self.model.compile(**self.params.config_compile)
-        self.model.summary()
+
+        if compile:
+            self.model.compile(**self.params.config_compile)
+            self.model.summary()
 
 
 class KerasModel(ABC):
@@ -274,3 +276,9 @@ def ids2Onehot(ids, vocabSize):
     onehot[np.arange(m), np.array(ids)] = 1
 
     return onehot
+
+
+def getKerasLayerIdByName(model, layername):
+    for idx, layer in enumerate(model.layers):
+        if layer.name == layername:
+            return idx

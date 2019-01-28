@@ -11,6 +11,7 @@ from keras.layers import Conv1D, MaxPooling1D
 
 import bin.module.util as util
 import bin.module.text.Preprocessor as TextPreprocessor
+import bin.const as CONST
 from bin.setting import path, textSummarizer as config
 
 logger = util.general.initLogger(loggerName='TextSummarizer')
@@ -175,6 +176,7 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         - Keep punctuation (sentence structure).
         - Provide a desc to save the normalized tokens. The desc will also be used in the filename.
         """
+        #TODO: move the tks to const file
         ats_tokenized = TextPreprocessor.Tokenizer(ats).tokenize()
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filter().getNormalized()
 
@@ -183,8 +185,8 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         for at in ats_normalized:
             for st in at:
                 if st[-1] not in ['.', '!', '?']: st.append('.')
-            at[0].insert(0, '_startTk')
-            at[-1].append('_endTk')
+            at[0].insert(0, CONST.TOKEN.START)
+            at[-1].append(CONST.TOKEN.END)
 
         if save: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save)
         return ats_normalized
@@ -213,31 +215,45 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
             input_dim=self.params.vocabSize_review,
             output_dim=self.params.encoderEmb['size'],
             weights=[weights_review],
-            trainable=self.params.encoderEmb['trainable']
+            trainable=self.params.encoderEmb['trainable'],
+            name=CONST.MODEL.EMB_ENCODER
         )
         Emb_Decoder = Embedding(
             input_dim=self.params.vocabSize_verdict,
             output_dim=self.params.decoderEmb['size'],
             weights=[weights_verdict],
-            trainable=self.params.decoderEmb['trainable']
+            trainable=self.params.decoderEmb['trainable'],
+            name=CONST.MODEL.EMB_DECODER
         )
+        LSTM_Encoder = LSTM(
+            units=self.params.LSTMUnits,
+            return_state=True,
+            name=CONST.MODEL.LSTM_ENCODER
+        )
+        LSTM_Decoder = LSTM(
+            units=self.params.LSTMUnits,
+            return_sequences=True,
+            return_state=True,
+            name=CONST.MODEL.LSTM_DECODER
+        )
+        Dense_Decoder = Dense(len(weights_verdict), activation='softmax', name=CONST.MODEL.OUTPUTS)
 
         #Input the whole text, shape=(batch, len(at))
-        inputs_encoder = Input(shape=(None,), dtype='int32', name='inputs_encoder')
+        inputs_encoder = Input(shape=(None,), dtype='int32', name=CONST.MODEL.INPUTS_ENCODER)
         _ = Emb_Encoder(inputs_encoder)
         _ = Dropout(self.params.dropoutRate)(_)
         _ = Conv1D(**self.params.config_conv1D, strides=1, padding='valid', activation='relu')(_)
         _ = MaxPooling1D(self.params.poolSize)(_)
-        _, state_h, state_c = LSTM(units=self.params.LSTMUnits, return_state=True)(_)
+        _, enState_h, enState_c = LSTM_Encoder(_)
 
         #Input the verdict (t-1) for teacher forcing with the initial states from the encoder
-        inputs_decoder = Input(shape=(None,), dtype='int32', name='inputs_decoder')
+        inputs_decoder = Input(shape=(None,), dtype='int32', name=CONST.MODEL.INPUTS_DECODER)
         _ = Emb_Decoder(inputs_decoder)
-        _ = LSTM(units=self.params.LSTMUnits, return_sequences=True)(_, initial_state=[state_h, state_c])
+        _, deState_h, deState_c = LSTM_Decoder(_, initial_state=[enState_h, enState_c])
 
         #Output the verdict
         #No need for `TimeDistributed` when the `Dense` is following RNN layer, which implies a time dimension
-        outputs = Dense(len(weights_verdict), activation='softmax', name='outputs')(_)
+        outputs = Dense_Decoder(_)
 
         super().compile([inputs_encoder, inputs_decoder], outputs)
         logger.info('Compiled encoder-decoder model successfully.')
@@ -278,9 +294,44 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         logger.info('Trained with {} epochs.'.format(self.params.config_training['epochs']))
 
     def evaluate(self): pass
-        #TODO: sparse loss
         #https://www.dlology.com/blog/how-to-use-keras-sparse_categorical_crossentropy/
         #No need to evaluate. The real outputs are those of the inference model which uses the encoding from this model as input
 
-    def predict(self): pass
-        #Due to the extra input of teacher forcing, can't be directly used to predict -> Use the decoder models
+    def predict(self, review_new):
+        #Due to the extra input of teacher forcing, can't be directly used to predict -> redefine separate encoder model and decoder model
+        #Models used for prediction don't need compilation
+
+        # self.layers.outputs_encoder = [enState_h, enState_c]
+        #Encoder model
+        model_encoder = Model(self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.INPUTS_ENCODER)], self.layers.outputs_encoder)
+
+        #Decoder model
+        inputs_decoder = self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.INPUTS_DECODER)]
+        inputs_decoder_states = [Input(shape=(self.params.LSTMUnits,)), Input(shape=(self.params.LSTMUnits,))]
+        _ = self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.EMB_DECODER)](self.layers.inputs_decoder)
+        _, deState_h, deState_c= self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.LSTM_DECODER)](_, initial_state=inputs_decoder_states)
+        outputs_decoder_states = [deState_h, deState_c]
+        outputs_decoder = self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.OUTPUTS)](_)
+        model_decoder = Model([inputs_decoder] + inputs_decoder_states, [outputs_decoder] + outputs_decoder_states)
+
+        curH, curC = model_encoder.predict(self.preprocess_token(review_new))#LSTM states from review
+        
+        verdict = [CONST.TOKEN.START]
+        while not stopCondition:
+            #Preprocess token; input 1 tk at a time
+            x_decoder = [[verdict[-1]]]
+            x_onehot = util.data.ids2Onehot(self.preprocess_token(x_decoder)[0], self.params.vocabSize_verdict)
+            x_onehot = x_onehot.reshape(1, *x_onehot.shape)
+
+            #Predict
+            newTks, curH, curC = model_decoder.predict([x_onehot, curH, curC])
+            newTk_id = np.argmax(newTks[0, -1, :])
+
+            #Update verdict
+            newTk_term = self.mapping_verdict.id2token.get(newTk_id)
+            verdict.append(newTk_term)
+
+            #Check stop condition
+            if verdict[-1] == CONST.TOKEN.END: stopCondition = True
+        
+        logger.info(' '.join(verdict))
