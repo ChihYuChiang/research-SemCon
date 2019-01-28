@@ -179,9 +179,12 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         ats_normalized = TextPreprocessor.Normalizer(ats_tokenized).lower().filter().getNormalized()
 
         #Ensure the sentence-ending token
+        #'Add verdict starting and ending token
         for at in ats_normalized:
             for st in at:
-                if st[-1] not in ['.', '!', '?']: st.append('.') 
+                if st[-1] not in ['.', '!', '?']: st.append('.')
+            at[0].insert(0, '_startTk')
+            at[-1].append('_endTk')
 
         if save: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save)
         return ats_normalized
@@ -265,7 +268,8 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         dataDispatcher = util.data.KerasDataDispatcher(
             sampleSize=len(verdict_processed),
             batchSize=1, #Batch size must be 1 while the articles have dif len (if we decide not to pad)
-            genData=self._genData
+            genData=self._genData,
+            shuffle=True
         )
 
         #Training

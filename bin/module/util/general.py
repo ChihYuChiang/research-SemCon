@@ -383,7 +383,12 @@ def isExhausted(iterable, marker=True):
 
     return itertools.chain([firstItem], iterable)
 
+
 def createFolder(path):
+    """
+    - Create folder recursively (including all intermediate folders).
+    - No exception if existed.
+    """
     import pathlib
 
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
