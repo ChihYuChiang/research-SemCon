@@ -1,4 +1,5 @@
 import numpy as np
+from . import general as util
 
 
 class SetDivider():
@@ -148,10 +149,8 @@ class KerasModelBase(ABC):
     """
 
     def __init__(self, params):
-        import bin.module.util as util
-        
         self.model = object()
-        self.params = util.general.SettingContainer(
+        self.params = util.SettingContainer(
             batchSize = 32,
             config_multiprocessing = {},
             config_compile = {}, config_training = {},
@@ -172,15 +171,15 @@ class KerasModelBase(ABC):
         `path` includes the folder containing 3 files pertaining to the model.
         """
         import pickle
-        util.general.createFolder(path)
+
+        util.makeDirAvailable(path)
 
         #Config (only the graph)
-        config = model.to_yaml()
         with open(path + 'config.yaml', "w") as f:
-            f.write(config)
+            f.write(self.model.to_yaml())
 
         #Weights
-        model.save_weights(path + 'weights.h5')
+        self.model.save_weights(path + 'weights.h5')
 
         #Other stuffs
         with open(path + 'supplements.pkl', 'wb') as f:
@@ -213,6 +212,8 @@ class KerasModel(ABC):
 
     @abstractmethod
     def train(self, x_train, y_train):
+        #TODO: don't print all batches
+        #TODO: Track the loss
         trainingHistory = self.model.fit(x_train, y_train, batch_size=self.params.batchSize, **self.params.config_training)
         return trainingHistory
 
@@ -266,10 +267,20 @@ class KerasModelGen(ABC):
 def ids2Onehot(ids, vocabSize):
     """
     - Input: a list of word index.
-    - Output: a onehot numpy array with dimension (len(ids), vocabSize 
+    - Output: a onehot numpy array with dimension (len(ids), vocabSize).
     """
     m, n = len(ids), vocabSize
     onehot = np.zeros((m, n))
     onehot[np.arange(m), np.array(ids)] = 1
 
     return onehot
+
+
+def onehot2Ids(onehots):
+    """
+    - Input: np array of onehots.
+    - Output: a list of ids.
+    """
+    ids = np.argmax(onehots, axis=1)
+
+    return list(ids)

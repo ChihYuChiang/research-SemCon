@@ -357,16 +357,6 @@ def createCustomHeader():
     return headers
 
 
-def makeDirAvailable(directory):
-    """
-    Make sure the directory is available. If not, create one. (including all intermediate-level directories)
-    """
-    import os
-
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-
 def isExhausted(iterable, marker=True):
     """
     Examine if the iterable (eg. generator) is empty
@@ -384,7 +374,7 @@ def isExhausted(iterable, marker=True):
     return itertools.chain([firstItem], iterable)
 
 
-def createFolder(path):
+def makeDirAvailable(path):
     """
     - Create folder recursively (including all intermediate folders).
     - No exception if existed.
@@ -392,3 +382,14 @@ def createFolder(path):
     import pathlib
 
     pathlib.Path(path).mkdir(parents=True, exist_ok=True)
+
+
+def timeCodeBits(codeBits, nExec=100000, globals=None):
+    """
+    - `codeBits` = code in str. When multiple lines, use '''.
+    - `nExec` = how many times the code will be executed. Default to 100000.
+    - Pass current globals (env) to `globals` with `globals=globals()`.
+    """
+    import timeit
+
+    timeit.timeit(codeBits, number=nExec, globals=globals)
