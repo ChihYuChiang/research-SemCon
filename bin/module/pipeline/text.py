@@ -83,11 +83,11 @@ def summarize_initSentiment(data, model, session, load=True):
 
 
 def summarize_trainSentiment(data, model, session, epochs=1):
-    model.sentiment.params.config_training.epochs = epochs
+    model.sentiment.params.config_training['epochs'] = epochs
 
     model.sentiment.train(data.datasets.train.x, data.datasets.train.y)
     model.sentiment.evaluate(data.datasets.test.x, data.datasets.test.y)
-    model.sentiment.save(path.modelFolder + 'model_sentiment.pkl', mapping=data.mapping)
+    model.sentiment.save(path.modelFolder + 'model_sentiment/', mapping=data.mapping)
     logger.info('Saved sentiment model with mapping.')
 
     #Track the number of epochs trained
@@ -177,12 +177,17 @@ def summarize_initEncoderDecoder(data, model, session, load=True):
 
 
 def summarize_trainEncoderDecoder(data, model, session, epochs=1):
-    model.encoderDecoder.params.config_training.epochs = epochs
+    model.encoderDecoder.params.config_training['epochs'] = epochs
     model.encoderDecoder.train(data.review_normalized, data.verdict_normalized)
     
-    model.encoderDecoder.save(path.modelFolder + 'model_encoder-decoder.pkl', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
+    model.encoderDecoder.save(path.modelFolder + 'model_encoder-decoder/', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
     logger.info('Saved encoder-decoder model with mappings.')
 
     #Track the number of epochs trained
     session.modelEncoderDecoderEpoch += epochs
     logger.info('The encoder-decoder model has been trained with {} epochs.'.format(session.modelEncoderDecoderEpoch))
+
+
+def summarize_predictEncoderDecoder(text, model):
+    # text = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge? Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.']
+    model.encoderDecoder.predict(TextSummarizer.Model_EncoderDecoder.preprocess_textX(text))

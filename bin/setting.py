@@ -67,7 +67,7 @@ textSummarizer = util.general.SettingContainer(
 
         #Model
         embSize = 300,
-        embTranable = True,
+        embTrainable = True,
         dropoutRate = 0.25,
         poolSize = 4,
         config_conv1D = {
@@ -116,7 +116,8 @@ textSummarizer = util.general.SettingContainer(
         #Compile
         config_compile = {
             'loss': 'categorical_crossentropy',
-            'optimizer': 'adam'
+            'optimizer': 'adam',
+            'metrics': ['categorical_accuracy']
         },
 
         #Training

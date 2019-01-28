@@ -392,4 +392,5 @@ def timeCodeBits(codeBits, nExec=100000, globals=None):
     """
     import timeit
 
-    timeit.timeit(codeBits, number=nExec, globals=globals)
+    t = timeit.timeit(codeBits, number=nExec, globals=globals)
+    print('It took {} seconds executing \"{}\" {} times.'.format(rount(t, 4), codeBits, number))

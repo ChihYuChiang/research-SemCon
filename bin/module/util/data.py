@@ -274,13 +274,3 @@ def ids2Onehot(ids, vocabSize):
     onehot[np.arange(m), np.array(ids)] = 1
 
     return onehot
-
-
-def onehot2Ids(onehots):
-    """
-    - Input: np array of onehots.
-    - Output: a list of ids.
-    """
-    ids = np.argmax(onehots, axis=1)
-
-    return list(ids)
