@@ -300,22 +300,24 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
     def predict(self, review_new):
         #Due to the extra input of teacher forcing, can't be directly used to predict -> redefine separate encoder model and decoder model
         #Models used for prediction don't need compilation
+        getId = util.data.getKerasLayerIdByName
 
-        # self.layers.outputs_encoder = [enState_h, enState_c]
-        #Encoder model
-        model_encoder = Model(self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.INPUTS_ENCODER)], self.layers.outputs_encoder)
+        #Config encoder model
+        model_encoder = Model(self.model.layers[getId(CONST.MODEL.INPUTS_ENCODER)], self.model.layers[getId(CONST.MODEL.LSTM_Encoder)].output[1:])
 
-        #Decoder model
-        inputs_decoder = self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.INPUTS_DECODER)]
+        #Config decoder model
+        inputs_decoder = self.model.layers[getId(CONST.MODEL.INPUTS_DECODER)]
         inputs_decoder_states = [Input(shape=(self.params.LSTMUnits,)), Input(shape=(self.params.LSTMUnits,))]
-        _ = self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.EMB_DECODER)](self.layers.inputs_decoder)
-        _, deState_h, deState_c= self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.LSTM_DECODER)](_, initial_state=inputs_decoder_states)
+        _ = self.model.layers[getId(CONST.MODEL.EMB_DECODER)](inputs_decoder)
+        _, deState_h, deState_c= self.model.layers[getId(CONST.MODEL.LSTM_DECODER)](_, initial_state=inputs_decoder_states)
         outputs_decoder_states = [deState_h, deState_c]
-        outputs_decoder = self.model.layers[util.data.getKerasLayerIdByName(CONST.MODEL.OUTPUTS)](_)
+        outputs_decoder = self.model.layers[getId(CONST.MODEL.OUTPUTS)](_)
         model_decoder = Model([inputs_decoder] + inputs_decoder_states, [outputs_decoder] + outputs_decoder_states)
 
-        curH, curC = model_encoder.predict(self.preprocess_token(review_new))#LSTM states from review
+        #Infer review emb (LSTM states) from encoder as the initial hidden states for decoder 
+        curH, curC = model_encoder.predict(self.preprocess_token(review_new))
         
+        #Infer new tk from decoder, update the decoder layer states
         verdict = [CONST.TOKEN.START]
         while not stopCondition:
             #Preprocess token; input 1 tk at a time
@@ -323,15 +325,16 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
             x_onehot = util.data.ids2Onehot(self.preprocess_token(x_decoder)[0], self.params.vocabSize_verdict)
             x_onehot = x_onehot.reshape(1, *x_onehot.shape)
 
-            #Predict
+            #Infer new tk, output decoder states, update decoder states for next round
             newTks, curH, curC = model_decoder.predict([x_onehot, curH, curC])
-            newTk_id = np.argmax(newTks[0, -1, :])
 
             #Update verdict
+            #We need only the last element of `newTks`
+            newTk_id = np.argmax(newTks[0, -1, :])
             newTk_term = self.mapping_verdict.id2token.get(newTk_id)
             verdict.append(newTk_term)
 
-            #Check stop condition
+            #Update stop condition
             if verdict[-1] == CONST.TOKEN.END: stopCondition = True
         
         logger.info(' '.join(verdict))
