@@ -278,7 +278,7 @@ def ids2Onehot(ids, vocabSize):
     return onehot
 
 
-def getKerasLayerIdByName(model, layername):
+def getKerasLayerIdByName(layername, model):
     for idx, layer in enumerate(model.layers):
         if layer.name == layername:
             return idx

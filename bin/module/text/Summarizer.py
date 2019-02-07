@@ -4,6 +4,7 @@ import os
 import re
 from functools import partial
 
+from keras.models import Model
 from keras.preprocessing import sequence
 from keras.layers import Input, Dense, Dropout
 from keras.layers import Embedding, LSTM
@@ -300,13 +301,14 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
     def predict(self, review_new):
         #Due to the extra input of teacher forcing, can't be directly used to predict -> redefine separate encoder model and decoder model
         #Models used for prediction don't need compilation
-        getId = util.data.getKerasLayerIdByName
+        getId = partial(util.data.getKerasLayerIdByName, model=self.model)
 
         #Config encoder model
-        model_encoder = Model(self.model.layers[getId(CONST.MODEL.INPUTS_ENCODER)], self.model.layers[getId(CONST.MODEL.LSTM_Encoder)].output[1:])
+        #The params of `Model` are tensors (not layers)
+        model_encoder = Model(self.model.layers[getId(CONST.MODEL.INPUTS_ENCODER)].output, self.model.layers[getId(CONST.MODEL.LSTM_ENCODER)].output[1:])
 
         #Config decoder model
-        inputs_decoder = self.model.layers[getId(CONST.MODEL.INPUTS_DECODER)]
+        inputs_decoder = self.model.layers[getId(CONST.MODEL.INPUTS_DECODER)].output
         inputs_decoder_states = [Input(shape=(self.params.LSTMUnits,)), Input(shape=(self.params.LSTMUnits,))]
         _ = self.model.layers[getId(CONST.MODEL.EMB_DECODER)](inputs_decoder)
         _, deState_h, deState_c= self.model.layers[getId(CONST.MODEL.LSTM_DECODER)](_, initial_state=inputs_decoder_states)
@@ -314,19 +316,20 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         outputs_decoder = self.model.layers[getId(CONST.MODEL.OUTPUTS)](_)
         model_decoder = Model([inputs_decoder] + inputs_decoder_states, [outputs_decoder] + outputs_decoder_states)
 
-        #Infer review emb (LSTM states) from encoder as the initial hidden states for decoder 
-        curH, curC = model_encoder.predict(self.preprocess_token(review_new))
-        
+        #Infer review emb (LSTM states) from encoder as the initial hidden states for decoder
+        x_review = self.preprocess_token(review_new, self.mapping_review)[0]
+        curH, curC = model_encoder.predict(x_review.reshape(1, len(x_review)))
+
         #Infer new tk from decoder, update the decoder layer states
         verdict = [CONST.TOKEN.START]
+        stopCondition = False
         while not stopCondition:
             #Preprocess token; input 1 tk at a time
-            x_decoder = [[verdict[-1]]]
-            x_onehot = util.data.ids2Onehot(self.preprocess_token(x_decoder)[0], self.params.vocabSize_verdict)
-            x_onehot = x_onehot.reshape(1, *x_onehot.shape)
+            x_decoder = [[[verdict[-1]]]]
+            x_decoder_processed = self.preprocess_token(x_decoder, self.mapping_verdict)
 
             #Infer new tk, output decoder states, update decoder states for next round
-            newTks, curH, curC = model_decoder.predict([x_onehot, curH, curC])
+            newTks, curH, curC = model_decoder.predict([x_decoder_processed, curH, curC])
 
             #Update verdict
             #We need only the last element of `newTks`
