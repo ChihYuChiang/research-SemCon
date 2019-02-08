@@ -20,7 +20,7 @@ pipeline.text.summarize_trainSentiment(data, model, session, epochs=1)
 pipeline.text.summarize_predictSentiment([''], model)
 
 pipeline.text.preprocess_initEncoderDecoder(data, load=True)
-pipeline.text.summarize_initEncoderDecoder(data, model, session, load=False)
+pipeline.text.summarize_initEncoderDecoder(data, model, session, load=True)
 pipeline.text.summarize_trainEncoderDecoder(data, model, session, epochs=1)
 pipeline.text.summarize_predictEncoderDecoder([''], model)
 '''

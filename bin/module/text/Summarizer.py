@@ -260,6 +260,7 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         logger.info('Compiled encoder-decoder model successfully.')
 
     def _genData(self, targetIds):
+        #Returning data with `targetIds` as requests
         targetId = targetIds[0]
 
         #Get onehot and reshape np arrays
