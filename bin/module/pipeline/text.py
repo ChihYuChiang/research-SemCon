@@ -1,5 +1,6 @@
 import pickle
 import pandas as pd
+from tensorflow.python.framework.errors_impl import UnimplementedError
 
 import bin.module.text.Preprocessor as TextPreprocessor
 import bin.module.text.Summarizer as TextSummarizer
@@ -71,7 +72,7 @@ def preprocess_initSentiment(data, load=True):
 def summarize_initSentiment(data, model, session, load=True):
     if load:
         model.sentiment = TextSummarizer.Model_Sentiment()
-        model.sentiment.load(path.modelFolder + 'model_sentiment.pkl')
+        model.sentiment.load(path.modelFolder + 'model_sentiment/')
         logger.info('Loaded sentiment model with mapping.')
     else:
         model.sentiment = TextSummarizer.Model_Sentiment(mapping=data.mapping)
@@ -165,7 +166,7 @@ def preprocess_initEncoderDecoder(data, load=True):
 def summarize_initEncoderDecoder(data, model, session, load=True):
     if load:
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder()
-        model.encoderDecoder.load(path.modelFolder + 'model_encoder-decoder.pkl')
+        model.encoderDecoder.load(path.modelFolder + 'model_encoder-decoder/')
         logger.info('Loaded encoder-decoder model with mappings.')
     else:
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder(mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
@@ -178,14 +179,21 @@ def summarize_initEncoderDecoder(data, model, session, load=True):
 
 def summarize_trainEncoderDecoder(data, model, session, epochs=1):
     model.encoderDecoder.params.config_training['epochs'] = epochs
-    model.encoderDecoder.train(data.review_normalized, data.verdict_normalized)
-    
+
+    complete = True #Deal with Keras' internal error when multi-processing
+    try:
+        model.encoderDecoder.train(data.review_normalized, data.verdict_normalized)
+    except UnimplementedError:
+        logger.warning('Training stopped due to a Keras\' internal error (the session tracker will not be updated).')
+        complete = False
+
     model.encoderDecoder.save(path.modelFolder + 'model_encoder-decoder/', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
     logger.info('Saved encoder-decoder model with mappings.')
 
-    #Track the number of epochs trained
-    session.modelEncoderDecoderEpoch += epochs
-    logger.info('The encoder-decoder model has been trained with {} epochs.'.format(session.modelEncoderDecoderEpoch))
+    if complete:
+        #Track the number of epochs trained
+        session.modelEncoderDecoderEpoch += epochs
+        logger.info('The encoder-decoder model has been trained with {} epochs.'.format(session.modelEncoderDecoderEpoch))
 
 
 def summarize_predictEncoderDecoder(text, model):

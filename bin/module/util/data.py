@@ -1,4 +1,6 @@
 import numpy as np
+from keras.models import model_from_yaml
+
 from . import general as util
 
 

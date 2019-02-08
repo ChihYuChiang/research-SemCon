@@ -394,3 +394,12 @@ def timeCodeBits(codeBits, nExec=100000, globals=None):
 
     t = timeit.timeit(codeBits, number=nExec, globals=globals)
     print('It took {} seconds executing \"{}\" {} times.'.format(rount(t, 4), codeBits, number))
+
+
+def inspectMro(cls):
+    """
+    Print all ancestor (inherited) classes of a class.
+    """
+    import inspect
+
+    inspect.getmro(cls)
