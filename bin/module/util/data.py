@@ -142,6 +142,26 @@ class KerasDataDispatcher(Sequence):
         if self.shuffle == True: np.random.shuffle(self.idPool)
 
 
+class TfDataDispatcher(KerasDataDispatcher):
+    """
+    Return a generator could be used with tensorflow's `from_generator` function.
+    https://www.tensorflow.org/api_docs/python/tf/data/Dataset
+    """
+    def __init__(self, **params):
+        super().__init__(**params)
+
+    def __next__(self):
+        self.get(self.progress)
+        self.progress += 1
+    
+    def __iter__(self):
+        self.progress = 0
+        return self
+
+    def __call__(self):
+        return self
+
+
 from abc import ABC, abstractmethod
 class KerasModelBase(ABC):
     """
