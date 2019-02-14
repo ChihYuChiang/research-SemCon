@@ -7,6 +7,7 @@ import bin.module.text.Summarizer as TextSummarizer
 
 import bin.module.util as util
 from bin.setting import path, cred
+import bin.const as CONST
 
 logger = util.general.initLogger(
     loggerName='pipeline',
@@ -72,7 +73,7 @@ def preprocess_initSentiment(data, load=True):
 def summarize_initSentiment(data, model, session, load=True):
     if load:
         model.sentiment = TextSummarizer.Model_Sentiment()
-        model.sentiment.load(path.modelFolder + 'model_sentiment/')
+        model.sentiment.load(path.modelFolder + CONST.NAME.MODEL_SENTIMENT + '/')
         logger.info('Loaded sentiment model with mapping.')
     else:
         model.sentiment = TextSummarizer.Model_Sentiment(mapping=data.mapping)
@@ -88,7 +89,7 @@ def summarize_trainSentiment(data, model, session, epochs=1):
 
     model.sentiment.train(data.datasets.train.x, data.datasets.train.y)
     model.sentiment.evaluate(data.datasets.test.x, data.datasets.test.y)
-    model.sentiment.save(path.modelFolder + 'model_sentiment/', mapping=data.mapping)
+    model.sentiment.save(path.modelFolder + CONST.NAME.MODEL_SENTIMENT + '/', mapping=data.mapping)
     logger.info('Saved sentiment model with mapping.')
 
     #Track the number of epochs trained
@@ -166,7 +167,7 @@ def preprocess_initEncoderDecoder(data, load=True):
 def summarize_initEncoderDecoder(data, model, session, load=True):
     if load:
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder()
-        model.encoderDecoder.load(path.modelFolder + 'model_encoder-decoder/')
+        model.encoderDecoder.load(path.modelFolder + CONST.NAME.MODEL_DECODERENCODER + '/')
         logger.info('Loaded encoder-decoder model with mappings.')
     else:
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder(mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
@@ -187,7 +188,7 @@ def summarize_trainEncoderDecoder(data, model, session, epochs=1):
         logger.warning('Training stopped due to a Keras\' internal error (the session tracker will not be updated).')
         complete = False
 
-    model.encoderDecoder.save(path.modelFolder + 'model_encoder-decoder/', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
+    model.encoderDecoder.save(path.modelFolder + CONST.NAME.MODEL_DECODERENCODER + '/', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
     logger.info('Saved encoder-decoder model with mappings.')
 
     if complete:

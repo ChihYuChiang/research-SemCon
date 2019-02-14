@@ -14,3 +14,7 @@ MODEL = util.general.SettingContainer(
     LSTM_DECODER = 'LSTM_Decoder',
     OUTPUTS = 'outputs'
 )
+NAME = util.general.SettingContainer(
+    MODEL_ENCODERDECODER = 'model_encoder-decoder',
+    MODEL_SENTIMENT = 'model_sentiment'
+)

@@ -1,5 +1,4 @@
 import numpy as np
-from keras.models import model_from_yaml
 
 from . import general as util
 
@@ -210,6 +209,7 @@ class KerasModelBase(ABC):
     def load(self, path, compile=True):
         import pickle
         from keras.models import Model
+        from keras.models import model_from_yaml
 
         #Config (only the graph)
         with open(path + 'config.yaml', 'r') as f:
@@ -227,6 +227,15 @@ class KerasModelBase(ABC):
         if compile:
             self.model.compile(**self.params.config_compile)
             self.model.summary()
+    
+    def export(self, modelDir):
+        from tf.keras.estimator import model_to_estimator
+
+        #Export Keras model as Tensorflow estimator
+        model_to_estimator(
+            keras_model=self.model,
+            model_dir=modelDir,
+        )
 
 
 class KerasModel(ABC):
