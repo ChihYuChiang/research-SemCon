@@ -9,6 +9,7 @@ from keras.preprocessing import sequence
 from keras.layers import Input, Dense, Dropout
 from keras.layers import Embedding, LSTM
 from keras.layers import Conv1D, MaxPooling1D
+import tensorflow as tf
 
 import bin.module.util as util
 import bin.module.text.Preprocessor as TextPreprocessor
@@ -192,13 +193,21 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         if save: TextPreprocessor.saveTokens(ats_tokenized, ats_normalized, save)
         return ats_normalized
 
-    def preprocess_token(self, ats, mapping):
+    def _tk2Id(self, ats, mapping):
         #Text to index and use ats as units
         #Use `get` return `None` when KeyError -> skipping terms not in dict
         ats = [np.array(list(util.general.flattenList([[mapping.token2id.get(term) for term in st if mapping.token2id.get(term)] for st in at]))) for at in ats]
 
         logger.info('Shape of articles: ({}, None)'.format(len(ats)))
         return ats
+    
+    def preprocess_token(self, review, verdict):
+        #Implement the token preprocessing for training
+        #Process tokens, shift each `at` for teacher forcing
+        verdict_processed = self._tk2Id(verdict, self.mapping_verdict)
+        self.xEncoder_train = self._tk2Id(review, self.mapping_review)
+        self.xDecoder_train = [at[:-1] for at in verdict_processed]
+        self.y_train = [at[1:] for at in verdict_processed]
 
     def compile(self):
         """
@@ -276,15 +285,12 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
         )
 
     def train(self, review, verdict):
-        #Process tokens, shift each `at` for teacher forcing
-        verdict_processed = self.preprocess_token(verdict, self.mapping_verdict)
-        self.xEncoder_train = self.preprocess_token(review, self.mapping_review)
-        self.xDecoder_train = [at[:-1] for at in verdict_processed]
-        self.y_train = [at[1:] for at in verdict_processed]
+        #Implement tk preprocessing
+        self.preprocess_token(review, verdict)
 
         #Prepare data dispatcher
         dataDispatcher = util.data.KerasDataDispatcher(
-            sampleSize=len(verdict_processed),
+            sampleSize=len(self.y_train),
             batchSize=1, #Batch size must be 1 while the articles have dif len (if we decide not to pad)
             genData=self._genData,
             shuffle=True
@@ -342,3 +348,25 @@ class Model_EncoderDecoder(util.data.KerasModelBase, util.data.KerasModelGen):
             if verdict[-1] == CONST.TOKEN.END: stopCondition = True
         
         logger.info(' '.join(verdict))
+    
+    def getTfInputFn_train(self, review, verdict):
+        #Implement tk preprocessing
+        self.preprocess_token(review, verdict)
+
+        def train_input_fn():
+            dataset = tf.data.Dataset.from_generator(
+                (self._genData([targetId]) for targetId in range(len(self.y_train))),
+                output_types=(
+                    {'inputs_encoder': tf.int32,
+                    'inputs_decoder': tf.int32},
+                    {'outputs': tf.float32}
+                )
+            )
+            #Shuffle, repeat, and batch the examples
+            dataset = dataset.shuffle(10).repeat().batch(1)
+
+            #Return the dataset
+            return dataset
+        
+        return train_input_fn
+         

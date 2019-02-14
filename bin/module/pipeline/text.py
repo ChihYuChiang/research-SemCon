@@ -167,7 +167,7 @@ def preprocess_initEncoderDecoder(data, load=True):
 def summarize_initEncoderDecoder(data, model, session, load=True):
     if load:
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder()
-        model.encoderDecoder.load(path.modelFolder + CONST.NAME.MODEL_DECODERENCODER + '/')
+        model.encoderDecoder.load(path.modelFolder + CONST.NAME.MODEL_ENCODERDECODER + '/')
         logger.info('Loaded encoder-decoder model with mappings.')
     else:
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder(mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
@@ -188,7 +188,7 @@ def summarize_trainEncoderDecoder(data, model, session, epochs=1):
         logger.warning('Training stopped due to a Keras\' internal error (the session tracker will not be updated).')
         complete = False
 
-    model.encoderDecoder.save(path.modelFolder + CONST.NAME.MODEL_DECODERENCODER + '/', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
+    model.encoderDecoder.save(path.modelFolder + CONST.NAME.MODEL_ENCODERDECODER + '/', mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
     logger.info('Saved encoder-decoder model with mappings.')
 
     if complete:
