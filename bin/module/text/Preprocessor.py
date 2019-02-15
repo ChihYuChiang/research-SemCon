@@ -23,11 +23,13 @@ class Tokenizer():
 
     def __init__(self, articles):
         self.articles = articles
-    
-    def tokenizeGen(self): #Generator only
+
+    def _checkExhausted(self):
         self.articles = util.general.isExhausted(iter(self.articles))
         assert self.articles , 'Articles are exhausted. Please re-initialize.'
-
+    
+    def tokenizeGen(self): #Generator only
+        self._checkExhausted()
         tokenGen = ((word_tokenize(st) for st in sent_tokenize(at)) for at in self.articles)
         logger.info('Created token generator.')
         return tokenGen
@@ -35,6 +37,17 @@ class Tokenizer():
     def tokenize(self): #Really produce the tokens
         tokenized = util.general.createListFromGen(self.tokenizeGen())
         logger.info('Tokenized articles.')
+        return tokenized
+    
+    def tokenizeGen_st(self):
+        self._checkExhausted()
+        tokenGen = ((st for st in sent_tokenize(at)) for at in self.articles)
+        logger.info('Created token (sentences) generator.')
+        return tokenGen        
+
+    def tokenize_st(self):
+        tokenized = util.general.createListFromGen(self.tokenizeGen_st())
+        logger.info('Tokenized articles into sentences.')
         return tokenized
     
     @classmethod
@@ -209,6 +222,12 @@ class EmbOperation():
         """
         emb = KeyedVectors.load_word2vec_format(path, binary=True)
 
+        #Provide the KeyError fallback `get` function
+        def getEmb(key):
+            try: return emb[key]
+            except KeyError: return None
+        emb.get = getEmb
+
         logger.info('Loaded pretrained embedding with {} terms.'.format(str(len(emb.index2word))))
         return emb
     
@@ -237,7 +256,7 @@ class EmbOperation():
         Average emb by sentence.
         - Return: [sent=array(300,)]
         """
-        sentenceEmb = [np.array([emb[tk] for tk in st]).mean(axis=0) for st in at]
+        sentenceEmb = [np.array([emb.get(tk) for tk in st if emb.get(tk) is not None]).mean(axis=0) for st in at]
 
         logger.info('Acquired sentence embedding of {} sentences.'.format(str(len(sentenceEmb))))
         return sentenceEmb
@@ -248,7 +267,7 @@ class EmbOperation():
         Average emb by article.
         - Return: array(300,)
         """
-        articleEmb = np.array([emb[tk] for st in at for tk in st]).mean(axis=0)
+        articleEmb = np.array([emb.get(tk) for st in at for tk in st if emb.get(tk) is not None]).mean(axis=0)
 
         logger.info('Acquired article embedding of {} articles.'.format(len(articleEmb)))
         return articleEmb
