@@ -385,7 +385,7 @@ class Model_TextRank():
         self.emb = TextPreprocessor.EmbOperation.loadPretrainedEmb(embPath)
 
     def preprocess_text8Token(self, at):
-        at_tokenized = TextPreprocessor.Tokenizer([at]).tokenize()
+        at_tokenized = TextPreprocessor.Tokenizer(at).tokenize()
         at_normalized = TextPreprocessor.Normalizer(at_tokenized).lower().filterStop().filterNonWord().filter().getNormalized()
         at_stEmbedded = TextPreprocessor.EmbOperation.getSentenceEmb(at_normalized[0], self.emb)
 
@@ -396,28 +396,19 @@ class Model_TextRank():
         return squareform(pdist(at_stEmbedded, metric='cosine'))
 
     def predict(self, at, nS):
+        #`at` as in the form of [TEXT]
         simMatrix = self.getSimMatrix(self.preprocess_text8Token(at))
 
         nxGraph = nx.from_numpy_array(simMatrix)
         scores = nx.pagerank(nxGraph)
 
-        sentences = TextPreprocessor.Tokenizer([at]).tokenize_st()[0]
+        sentences = TextPreprocessor.Tokenizer(at).tokenize_st()[0]
         ranked_sentences = sorted(((scores[i], s) for i, s in enumerate(sentences)), reverse=True)
 
         #Extract top `nS` sentences as the summary
         logger.info('-' * 60)
-        logger.info('The top {} sentences of are:'.format(nS))
+        logger.info('The top {} sentences:'.format(nS))
         for i in range(nS):
-            print(ranked_sentences[i][1])
+            logger.info(ranked_sentences[i][1])
 
         return ranked_sentences
-
-
-at = """
-NLTK is a leading platform for building Python programs to work with human language data. It provides easy-to-use interfaces to over 50 corpora and lexical resources such as WordNet, along with a suite of text processing libraries for classification, tokenization, stemming, tagging, parsing, and semantic reasoning, wrappers for industrial-strength NLP libraries, and an active discussion forum.
-Thanks to a hands-on guide introducing programming fundamentals alongside topics in computational linguistics, plus comprehensive API documentation, NLTK is suitable for linguists, engineers, students, educators, researchers, and industry users alike. NLTK is available for Windows, Mac OS X, and Linux. Best of all, NLTK is a free, open source, community-driven project.
-NLTK has been called “a wonderful tool for teaching, and working in, computational linguistics using Python,” and “an amazing library to play with natural language.”
-Natural Language Processing with Python provides a practical introduction to programming for language processing. Written by the creators of NLTK, it guides the reader through the fundamentals of writing Python programs, working with corpora, categorizing text, analyzing linguistic structure, and more. The online version of the book has been been updated for Python 3 and NLTK 3. (The original Python 2 version is still available at http://nltk.org/book_1ed.)
-"""
-test = Model_TextRank(path.gNewsW2V)
-td = test.predict(at, 2)

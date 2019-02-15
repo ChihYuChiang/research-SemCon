@@ -79,6 +79,7 @@ def summarize_initSentiment(data, model, session, load=True):
         model.sentiment = TextSummarizer.Model_Sentiment(mapping=data.mapping)
         model.sentiment.params.update(embWeightInit=data.embMatrix)
         model.sentiment.compile()
+        logger.info('Initialized sentiment model with mapping.')
 
         #Reset training epoch tracker
         session.modelSentimentEpoch = 0
@@ -98,7 +99,6 @@ def summarize_trainSentiment(data, model, session, epochs=1):
 
 
 def summarize_predictSentiment(text, model):
-    # text = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge? Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.']
     model.sentiment.predict(TextSummarizer.Model_Sentiment.preprocess_text(text))
 
 
@@ -173,6 +173,7 @@ def summarize_initEncoderDecoder(data, model, session, load=True):
         model.encoderDecoder = TextSummarizer.Model_EncoderDecoder(mapping_review=data.mapping_review, mapping_verdict=data.mapping_verdict)
         model.encoderDecoder.params.update(embWeightInit_review=data.embMatrix_review, embWeightInit_verdict=data.embMatrix_verdict)
         model.encoderDecoder.compile()
+        logger.info('Initialized encoder-decoder model with mappings.')
 
         #Reset training epoch tracker
         session.modelEncoderDecoderEpoch = 0
@@ -198,5 +199,19 @@ def summarize_trainEncoderDecoder(data, model, session, epochs=1):
 
 
 def summarize_predictEncoderDecoder(text, model):
-    # text = ['This is a test for text preprocessing. Do you think this could be a good way to expand your knowledge? Is that because theres always an inherent overhead to using classes in Python? And if so, where does the overhead come from technically speaking.']
     model.encoderDecoder.predict(TextSummarizer.Model_EncoderDecoder.preprocess_textX(text))
+
+
+
+
+'''
+------------------------------------------------------------
+TextRank Model
+------------------------------------------------------------
+'''
+def summarize_initTextRank(data, model, session):
+    model.textRank = TextSummarizer.Model_TextRank(path.gNewsW2V)
+    logger.info('Initialized text rank model with pretrained embedding.')
+
+def summarize_predictTextRank(text, model):
+    model.textRank.predict(text, 2)

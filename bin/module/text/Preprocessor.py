@@ -211,7 +211,7 @@ class EmbOperation():
         keyWords = pd.read_csv(path.expKeyword, encoding='utf-8', header=None)[0].tolist()
         keyWords = [word.lower() for word in keyWords]
 
-        logger.info('Load exp keywords of', len(keyWords), 'words.')
+        logger.info('Loaded exp keywords of', len(keyWords), 'words.')
         return keywords
     
     @staticmethod
@@ -220,6 +220,7 @@ class EmbOperation():
         Load pretrained emb
         - Note for GoogleNews: w/o punctuation, w/o stemming, w stopwords, w some n-grams
         """
+        logger.info('Loading pretrained embedding at "{}".'.format(path))
         emb = KeyedVectors.load_word2vec_format(path, binary=True)
 
         #Provide the KeyError fallback `get` function
@@ -269,7 +270,7 @@ class EmbOperation():
         """
         articleEmb = np.array([emb.get(tk) for st in at for tk in st if emb.get(tk) is not None]).mean(axis=0)
 
-        logger.info('Acquired article embedding of {} articles.'.format(len(articleEmb)))
+        logger.info('Acquired article embedding of {} articles.'.format(str(len(articleEmb))))
         return articleEmb
 
 
