@@ -1,14 +1,17 @@
 import os
+import re
 import operator
 import pickle
 import pandas as pd
 import numpy as np
+from functools import reduce
 from zlib import adler32
 from gensim.models import KeyedVectors
 from gensim.corpora import Dictionary, HashDictionary
 from nltk.probability import FreqDist
 from nltk import word_tokenize, sent_tokenize
 
+import bin.const as CONST
 import bin.module.util as util
 from bin.setting import path, textPreprocessor as config
 
@@ -117,14 +120,45 @@ class Normalizer():
         logger.info('Included "stem" operation in Normalizer.')
         return self
     
+    def preservePN(self, POSTagger=config.POSTagger):
+        """
+        Mark and combine proper nouns into "_pN_New_York" format.
+        """
+
+        ats_pos = ((POSTagger(st) for st in at) for at in self.gen)
+
+        def _combinePN(acc, cur):
+            idx, tag = cur
+            tks, tmpPN, output = acc
+            curTk = tks[idx]
+            if tag in ['NNP', 'NNPS']:
+                if not tmpPN: tmpPN.append('_pN') #Initialize when empty
+                tmpPN.append(curTk)
+                return (tks, tmpPN, output)
+            else:
+                if tmpPN:
+                    output.append('_'.join(tmpPN))
+                    del tmpPN[:] #Empty list instead creating new [], memory efficient
+                output.append(curTk)
+                return (tks, tmpPN, output)
+
+        def _reduce(st_pos):
+            tks, pos = list(zip(*st_pos))
+            acc = reduce(_combinePN, enumerate(pos), (tks, [], []))
+            return acc[2]
+
+        self.gen = ((_reduce(st_pos) for st_pos in at_pos) for at_pos in ats_pos)
+        logger.info('Included "preservePN" operation in Normalizer.')
+        return self
+
     @classmethod
     def test_operations(cls):
         """
-        Test chained lower(), filterStop(), stem()
+        Test chained preservePN(), lower(), filterStop(), stem()
         """
-        tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']], []]
+        tokens = [[['test', 'Is', 'gooD', '.'], ['HELLO', 'Kitty', 'world']], [['overhead', 'comes', 'from', 'technically', 'speaking']], []]
         print(tokens)
-        print(cls(tokens).lower().filterStop().stem().getNormalized())
+        print(cls(tokens).preservePN().lower().filterStop().stem().getNormalized())
 
 
 
@@ -272,6 +306,49 @@ class EmbOperation():
 
         logger.info('Acquired article embedding of {} articles.'.format(str(len(articleEmb))))
         return articleEmb
+
+
+
+
+class IMDBReader():
+
+    @staticmethod
+    def readAsDf():
+        dic = {}
+        urlFiles = {}
+        for (dirpath, dirnames, filenames) in os.walk(path.textIMDBFolder, topdown=True):
+            group_orig = 'train' if re.search('train', dirpath) else 'test' #The original train/test seperation by the author
+            positive = not re.search('neg', dirpath)
+            urlFile = '{}-{}'.format(group_orig, str(positive))
+            
+            for filename in filenames:
+                match = re.match('^(\d+)_(\d+)\.txt$', filename)
+                filepath = os.path.join(dirpath, filename)
+                
+                #If the particular filename format, read txt file into df
+                if match:
+                    title = re.search('title/(.+)/', urlFiles[urlFile][int(match.group(1))]).group(1)
+                    rating = match.group(2)
+                    with open(filepath, 'rt', encoding='utf-8') as f:
+                        text = f.read()
+                    dic['{}'.format(re.search('(.+)/(.+)\.', filepath).group(2))] = [title, rating, text, positive, group_orig]
+                
+                #Get title id from the url files
+                elif re.match('urls', filename):
+                    with open(filepath, 'rt') as f:
+                        positive_url = str(not re.search('neg', filename))
+                        urlFiles['{}-{}'.format(group_orig, positive_url)] = list(f) #Turn into a list, each line an element
+                        
+        df = pd.DataFrame.from_dict(dic, orient='index')
+        df.columns = ['title', 'rating', 'text', 'positive', 'group_orig']
+
+        logger.info('Read in {} reviews.'.format(df.shape[0]))
+        return df
+    
+    @classmethod
+    def exportDf(cls):
+        cls.readAsDf().to_csv(path.textIMDBDf, encoding='utf-8')
+        logger.info('Export the df at {}.'.format(path.textIMDBDf))
 
 
 

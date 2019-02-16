@@ -112,7 +112,8 @@ class SettingContainer(UniversalContainer):
     Usage
     - Convenient keyword = parameter setting.
     - Protected attribute setter. Use `update(key=value)` to modify content.
-    - Compatible with `**self` expression
+    - Compatible with `**self` expression.
+    - Storing constants, use plain class instead, which could be shown in intellisense.
     """
 
     #The keys and __getitem__ make the obj pass as a mapping obj -> can be used with ** expression

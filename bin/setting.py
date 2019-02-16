@@ -1,6 +1,7 @@
 import nltk.corpus
 from nltk.stem.snowball import SnowballStemmer
 from nltk.stem import WordNetLemmatizer
+from nltk import pos_tag
 
 import bin.module.util as util
 
@@ -52,7 +53,8 @@ textPreprocessor = util.general.SettingContainer(
     stemmer      = SnowballStemmer('english').stem,
     lemmatizer   = WordNetLemmatizer().lemmatize,
     words2Filter = ['br'],
-    words2Keep   = []
+    words2Keep   = [],
+    POSTagger    = pos_tag
 )
 
 textSummarizer = util.general.SettingContainer(

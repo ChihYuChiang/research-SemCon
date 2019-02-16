@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import os
-import re
 from functools import partial
 
 import tensorflow as tf
@@ -19,49 +18,6 @@ import bin.const as CONST
 from bin.setting import path, textSummarizer as config
 
 logger = util.general.initLogger(loggerName='TextSummarizer')
-
-
-
-
-class IMDBReader():
-
-    @staticmethod
-    def readAsDf():
-        dic = {}
-        urlFiles = {}
-        for (dirpath, dirnames, filenames) in os.walk(path.textIMDBFolder, topdown=True):
-            group_orig = 'train' if re.search('train', dirpath) else 'test' #The original train/test seperation by the author
-            positive = not re.search('neg', dirpath)
-            urlFile = '{}-{}'.format(group_orig, str(positive))
-            
-            for filename in filenames:
-                match = re.match('^(\d+)_(\d+)\.txt$', filename)
-                filepath = os.path.join(dirpath, filename)
-                
-                #If the particular filename format, read txt file into df
-                if match:
-                    title = re.search('title/(.+)/', urlFiles[urlFile][int(match.group(1))]).group(1)
-                    rating = match.group(2)
-                    with open(filepath, 'rt', encoding='utf-8') as f:
-                        text = f.read()
-                    dic['{}'.format(re.search('(.+)/(.+)\.', filepath).group(2))] = [title, rating, text, positive, group_orig]
-                
-                #Get title id from the url files
-                elif re.match('urls', filename):
-                    with open(filepath, 'rt') as f:
-                        positive_url = str(not re.search('neg', filename))
-                        urlFiles['{}-{}'.format(group_orig, positive_url)] = list(f) #Turn into a list, each line an element
-                        
-        df = pd.DataFrame.from_dict(dic, orient='index')
-        df.columns = ['title', 'rating', 'text', 'positive', 'group_orig']
-
-        logger.info('Read in {} reviews.'.format(df.shape[0]))
-        return df
-    
-    @classmethod
-    def exportDf(cls):
-        cls.readAsDf().to_csv(path.textIMDBDf, encoding='utf-8')
-        logger.info('Export the df at {}.'.format(path.textIMDBDf))
 
 
 
